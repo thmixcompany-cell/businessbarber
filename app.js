@@ -1,0 +1,2489 @@
+const money = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+  maximumFractionDigits: 0,
+});
+
+const storageKey = "businessBarberState";
+const authKey = "businessBarberAuth";
+let apiEnabled = false;
+
+const defaultState = {
+  user: {
+    id: "user-demo",
+    name: "Dono Demo",
+    email: "demo@businessbarber.local",
+    role: "owner",
+    barbershopId: "shop-alpha",
+  },
+  currentBarbershopId: "shop-alpha",
+  barbershops: [
+    {
+      id: "shop-alpha",
+      name: "Barbearia Alpha",
+      slug: "barbearia-alpha",
+      city: "Cuiaba",
+      plan: "Profissional",
+      monthlyPrice: 197,
+      setupPrice: 497,
+      openTime: "09:00",
+      closeTime: "19:00",
+      active: true,
+    },
+  ],
+  users: [
+    {
+      id: "user-demo",
+      name: "Dono Demo",
+      email: "demo@businessbarber.local",
+      role: "owner",
+      barbershopId: "shop-alpha",
+      active: true,
+    },
+  ],
+  recoveredRevenue: 2430,
+  openSlots: 4,
+  clients: [
+    {
+      id: "client-lucas",
+      name: "Lucas Andrade",
+      phone: "559999900001",
+      lastVisit: "2026-04-02",
+      favoriteService: "Corte",
+      preferredPeriod: "Tarde",
+      ticket: 85,
+      professional: "Diego",
+      status: "Inativo",
+    },
+    {
+      id: "client-marcos",
+      name: "Marcos Paulo",
+      phone: "559999900002",
+      lastVisit: "2026-03-17",
+      favoriteService: "Corte + barba",
+      preferredPeriod: "Noite",
+      ticket: 110,
+      professional: "Rafa",
+      status: "Inativo",
+    },
+    {
+      id: "client-bruno",
+      name: "Bruno Vieira",
+      phone: "559999900003",
+      lastVisit: "2026-02-23",
+      favoriteService: "Corte + barba",
+      preferredPeriod: "Tarde",
+      ticket: 130,
+      professional: "Caio",
+      status: "Inativo",
+    },
+  ],
+  professionals: [
+    { id: "pro-rafa", name: "Rafa", commission: 45, active: true },
+    { id: "pro-diego", name: "Diego", commission: 45, active: true },
+    { id: "pro-caio", name: "Caio", commission: 40, active: true },
+  ],
+  services: [
+    { id: "svc-corte", name: "Corte", price: 70, duration: 45 },
+    { id: "svc-barba", name: "Barba", price: 45, duration: 30 },
+    { id: "svc-combo", name: "Corte + barba", price: 110, duration: 75 },
+  ],
+  integrations: {
+    whatsapp: {
+      provider: "whatsapp_cloud_api",
+      mode: "sandbox",
+      phoneNumberId: "",
+      tokenConfigured: false,
+      defaultTemplate: "retorno_cliente_sumido",
+      status: "simulado",
+      lastTestAt: "",
+    },
+    pix: {
+      provider: "manual_pix",
+      mode: "sandbox",
+      key: "",
+      depositAmount: 15,
+      status: "simulado",
+      lastTestAt: "",
+    },
+  },
+  publicBooking: {
+    enabled: true,
+    slug: "barbearia-alpha",
+    depositRequired: true,
+    headline: "Agende seu corte sem perder horário",
+  },
+  onboardingChecklist: [
+    { id: "clients", label: "Importar clientes", done: true },
+    { id: "services", label: "Configurar serviços", done: true },
+    { id: "professionals", label: "Cadastrar equipe", done: true },
+    { id: "integrations", label: "Testár WhatsApp e Pix", done: false },
+    { id: "campaign", label: "Rodar primeira campanha", done: true },
+  ],
+  auditLogs: [],
+  messageHistory: [],
+  pixCharges: [],
+  campaigns: [
+    {
+      id: "camp-retorno-45",
+      name: "Retorno 45+ dias",
+      segment: "Sumidos há 45 dias",
+      sent: 12,
+      responses: 5,
+      bookings: 3,
+      revenue: 255,
+      status: "Enviada",
+      createdAt: "2026-05-24",
+    },
+  ],
+  prospects: [
+    {
+      barbershop: "Barbearia Alpha",
+      owner: "Rafael",
+      team: 4,
+      pain: "3 horários vagos por semana",
+      status: "Contato inicial",
+      next: "Enviar demo",
+    },
+    {
+      barbershop: "Studio Corte Fino",
+      owner: "Diego",
+      team: 6,
+      pain: "clientes somem depois do primeiro corte",
+      status: "Demo marcada",
+      next: "Mostrar protótipo",
+    },
+    {
+      barbershop: "Navalha Club",
+      owner: "Caio",
+      team: 3,
+      pain: "cancelamento em cima da hora",
+      status: "Piloto proposto",
+      next: "Fechar R$ 197/mês",
+    },
+  ],
+  inactiveClients: [
+    { name: "Lucas Andrade", lastVisit: 52, value: 85, intent: "Alta", selected: false },
+    { name: "Marcos Paulo", lastVisit: 68, value: 110, intent: "Alta", selected: false },
+    { name: "Tiago Ramos", lastVisit: 45, value: 70, intent: "Média", selected: false },
+    { name: "Bruno Vieira", lastVisit: 91, value: 130, intent: "Alta", selected: false },
+    { name: "Henrique Costa", lastVisit: 39, value: 55, intent: "Baixa", selected: false },
+  ],
+  appointments: [
+    { time: "09:00", barber: "Rafa", client: "André Lima", service: "Corte degradê", status: "Confirmado" },
+    { time: "10:00", barber: "Diego", client: "Vago", service: "Corte ou barba", status: "Aberto", open: true },
+    { time: "11:30", barber: "Caio", client: "Felipe Souza", service: "Corte + barba", status: "Sinal Pix" },
+    { time: "14:00", barber: "Rafa", client: "Vago", service: "Corte rápido", status: "Aberto", open: true },
+    { time: "15:30", barber: "Caio", client: "Ronaldo Reis", service: "Barba", status: "Confirmado" },
+    { time: "16:30", barber: "Diego", client: "Vago", service: "Corte + barba", status: "Aberto", open: true },
+    { time: "18:00", barber: "Rafa", client: "Mateus Nunes", service: "Corte", status: "Confirmado" },
+  ],
+  waitlist: [
+    { period: "Manhã", people: 8, best: "Lucas Andrade", chance: "82%" },
+    { period: "Almoço", people: 5, best: "João Pedro", chance: "71%" },
+    { period: "Tarde", people: 11, best: "Bruno Vieira", chance: "88%" },
+    { period: "Noite", people: 7, best: "Marcos Paulo", chance: "76%" },
+  ],
+  clubPlans: [
+    { name: "Corte em dia", price: 89, perk: "2 cortes por mês", subscribers: 14 },
+    { name: "Corte + barba", price: 129, perk: "2 cortes e 1 barba", subscribers: 9 },
+    { name: "Prioridade", price: 149, perk: "agenda prioritária + desconto", subscribers: 5 },
+  ],
+};
+
+function loadSavedState() {
+  try {
+    return JSON.parse(localStorage.getItem(storageKey)) || {};
+  } catch (error) {
+    return {};
+  }
+}
+
+function getSession() {
+  try {
+    return JSON.parse(localStorage.getItem(authKey)) || {};
+  } catch (error) {
+    return {};
+  }
+}
+
+async function apiFetch(url, options = {}, retries = 1) {
+  const session = getSession();
+  const headers = {
+    ...(options.headers || {}),
+    ...(session.token  ?{ Authorization: `Bearer ${session.token}` } : {}),
+  };
+  const request = () => fetch(url, { ...options, headers });
+  try {
+    const response = await request();
+    if (!response.ok && response.status >= 500 && retries > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      return apiFetch(url, options, retries - 1);
+    }
+    return response;
+  } catch (error) {
+    if (retries > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      return apiFetch(url, options, retries - 1);
+    }
+    throw error;
+  }
+}
+
+const savedState = loadSavedState();
+const state = {
+  ...defaultState,
+  ...savedState,
+  user: { ...defaultState.user, ...(savedState.user || {}) },
+  barbershops: (savedState.barbershops || defaultState.barbershops).map((item) => ({ ...item })),
+  users: (savedState.users || defaultState.users).map((item) => ({ ...item })),
+  prospects: (savedState.prospects || defaultState.prospects).map((item) => ({ ...item })),
+  clients: (savedState.clients || defaultState.clients).map((item) => ({ ...item })),
+  professionals: (savedState.professionals || defaultState.professionals).map((item) => ({ ...item })),
+  services: (savedState.services || defaultState.services).map((item) => ({ ...item })),
+  integrations: {
+    ...defaultState.integrations,
+    ...(savedState.integrations || {}),
+    whatsapp: {
+      ...defaultState.integrations.whatsapp,
+      ...((savedState.integrations || {}).whatsapp || {}),
+    },
+    pix: {
+      ...defaultState.integrations.pix,
+      ...((savedState.integrations || {}).pix || {}),
+    },
+  },
+  publicBooking: { ...defaultState.publicBooking, ...(savedState.publicBooking || {}) },
+  onboardingChecklist: (savedState.onboardingChecklist || defaultState.onboardingChecklist).map((item) => ({ ...item })),
+  auditLogs: (savedState.auditLogs || defaultState.auditLogs).map((item) => ({ ...item })),
+  messageHistory: (savedState.messageHistory || defaultState.messageHistory).map((item) => ({ ...item })),
+  pixCharges: (savedState.pixCharges || defaultState.pixCharges).map((item) => ({ ...item })),
+  campaigns: (savedState.campaigns || defaultState.campaigns).map((item) => ({ ...item })),
+  inactiveClients: (savedState.inactiveClients || defaultState.inactiveClients).map((item) => ({ ...item })),
+  appointments: (savedState.appointments || defaultState.appointments).map((item) => ({ ...item })),
+  waitlist: (savedState.waitlist || defaultState.waitlist).map((item) => ({ ...item })),
+  clubPlans: (savedState.clubPlans || defaultState.clubPlans).map((item) => ({ ...item })),
+};
+
+function saveState() {
+  localStorage.setItem(storageKey, JSON.stringify(state));
+  if (apiEnabled) {
+    apiFetch("/api/state", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(state),
+    }).catch(() => {
+      apiEnabled = false;
+    });
+  }
+}
+
+function resetState() {
+  localStorage.removeItem(storageKey);
+  Object.assign(state, {
+    ...defaultState,
+    user: { ...defaultState.user },
+    barbershops: defaultState.barbershops.map((item) => ({ ...item })),
+    users: defaultState.users.map((item) => ({ ...item })),
+    prospects: defaultState.prospects.map((item) => ({ ...item })),
+    clients: defaultState.clients.map((item) => ({ ...item })),
+    professionals: defaultState.professionals.map((item) => ({ ...item })),
+    services: defaultState.services.map((item) => ({ ...item })),
+    integrations: {
+      ...defaultState.integrations,
+      whatsapp: { ...defaultState.integrations.whatsapp },
+      pix: { ...defaultState.integrations.pix },
+    },
+    publicBooking: { ...defaultState.publicBooking },
+    onboardingChecklist: defaultState.onboardingChecklist.map((item) => ({ ...item })),
+    auditLogs: defaultState.auditLogs.map((item) => ({ ...item })),
+    messageHistory: defaultState.messageHistory.map((item) => ({ ...item })),
+    pixCharges: defaultState.pixCharges.map((item) => ({ ...item })),
+    campaigns: defaultState.campaigns.map((item) => ({ ...item })),
+    inactiveClients: defaultState.inactiveClients.map((item) => ({ ...item })),
+    appointments: defaultState.appointments.map((item) => ({ ...item })),
+    waitlist: defaultState.waitlist.map((item) => ({ ...item })),
+    clubPlans: defaultState.clubPlans.map((item) => ({ ...item })),
+  });
+  saveState();
+}
+
+function mergeState(nextState) {
+  Object.assign(state, {
+    ...state,
+    ...nextState,
+    user: { ...state.user, ...(nextState.user || {}) },
+    barbershops: (nextState.barbershops || state.barbershops || []).map((item) => ({ ...item })),
+    users: (nextState.users || state.users || []).map((item) => ({ ...item })),
+    prospects: (nextState.prospects || state.prospects || []).map((item) => ({ ...item })),
+    clients: (nextState.clients || state.clients || []).map((item) => ({ ...item })),
+    professionals: (nextState.professionals || state.professionals || []).map((item) => ({ ...item })),
+    services: (nextState.services || state.services || []).map((item) => ({ ...item })),
+    integrations: {
+      ...state.integrations,
+      ...(nextState.integrations || {}),
+      whatsapp: { ...(state.integrations || {}).whatsapp, ...((nextState.integrations || {}).whatsapp || {}) },
+      pix: { ...(state.integrations || {}).pix, ...((nextState.integrations || {}).pix || {}) },
+    },
+    publicBooking: { ...state.publicBooking, ...(nextState.publicBooking || {}) },
+    onboardingChecklist: (nextState.onboardingChecklist || state.onboardingChecklist || []).map((item) => ({ ...item })),
+    auditLogs: (nextState.auditLogs || state.auditLogs || []).map((item) => ({ ...item })),
+    messageHistory: (nextState.messageHistory || state.messageHistory || []).map((item) => ({ ...item })),
+    pixCharges: (nextState.pixCharges || state.pixCharges || []).map((item) => ({ ...item })),
+    campaigns: (nextState.campaigns || state.campaigns || []).map((item) => ({ ...item })),
+    inactiveClients: (nextState.inactiveClients || state.inactiveClients || []).map((item) => ({ ...item })),
+    appointments: (nextState.appointments || state.appointments || []).map((item) => ({ ...item })),
+    waitlist: (nextState.waitlist || state.waitlist || []).map((item) => ({ ...item })),
+    clubPlans: (nextState.clubPlans || state.clubPlans || []).map((item) => ({ ...item })),
+  });
+}
+
+async function hydrateStateFromApi() {
+  try {
+    const response = await apiFetch("/api/state");
+    if (!response.ok) throw new Error("api_unavailable");
+    const apiState = await response.json();
+    apiEnabled = true;
+    mergeState(apiState);
+    localStorage.setItem(storageKey, JSON.stringify(state));
+  } catch (error) {
+    apiEnabled = false;
+  }
+}
+
+const scheduleList = document.querySelector("#scheduleList");
+const inactiveClients = document.querySelector("#inactiveClients");
+const waitlistGrid = document.querySelector("#waitlistGrid");
+const clubPlans = document.querySelector("#clubPlans");
+const setupList = document.querySelector("#setupList");
+const pilotSteps = document.querySelector("#pilotSteps");
+const pilotQuestions = document.querySelector("#pilotQuestions");
+const pipelineBoard = document.querySelector("#pipelineBoard");
+const clientAdminList = document.querySelector("#clientAdminList");
+const servicesList = document.querySelector("#servicesList");
+const professionalsList = document.querySelector("#professionalsList");
+const campaignHistory = document.querySelector("#campaignHistory");
+const messageOutbox = document.querySelector("#messageOutbox");
+const dashboardInviteQueue = document.querySelector("#dashboardInviteQueue");
+const onboardingList = document.querySelector("#onboardingList");
+const reportGrid = document.querySelector("#reportGrid");
+const campaignReportList = document.querySelector("#campaignReportList");
+const clientHistoryBox = document.querySelector("#clientHistoryBox");
+const appointmentForm = document.querySelector("#appointmentForm");
+const scheduleDate = document.querySelector("#scheduleDate");
+const scheduleTitle = document.querySelector("#scheduleTitle");
+const priorityList = document.querySelector("#priorityList");
+const priorityHeaderAction = document.querySelector("#priorityHeaderAction");
+const nextActionTitle = document.querySelector("#nextActionTitle");
+const nextActionText = document.querySelector("#nextActionText");
+const prioritySignalChance = document.querySelector("#prioritySignalChance");
+const prioritySignalTicket = document.querySelector("#prioritySignalTicket");
+const prioritySignalTime = document.querySelector("#prioritySignalTime");
+const inviteModal = document.querySelector("#inviteModal");
+const inviteModalTitle = document.querySelector("#inviteModalTitle");
+const inviteSummary = document.querySelector("#inviteSummary");
+const inviteMessage = document.querySelector("#inviteMessage");
+const integrationStatus = document.querySelector("#integrationStatus");
+const barbershopList = document.querySelector("#barbershopList");
+const userList = document.querySelector("#userList");
+const auditList = document.querySelector("#auditList");
+const bookingLink = document.querySelector("#bookingLink");
+const loginScreen = document.querySelector("#loginScreen");
+const toast = document.querySelector("#toast");
+let pendingInvite = null;
+
+function showToast(message) {
+  toast.textContent = message;
+  toast.classList.add("show");
+  setTimeout(() => toast.classList.remove("show"), 2800);
+}
+
+function daysSince(dateText) {
+  if (!dateText) return 999;
+  const date = new Date(dateText);
+  if (Number.isNaN(date.getTime())) return 999;
+  return Math.max(0, Math.floor((Date.now() - date.getTime()) / 86400000));
+}
+
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function appointmentDate(appointment) {
+  return appointment.date || appointment.day || todayIso();
+}
+
+function selectedScheduleDate() {
+  return scheduleDate.value || todayIso();
+}
+
+function isSameSlot(left, right) {
+  return (
+    appointmentDate(left) === appointmentDate(right) &&
+    String(left.time || "") === String(right.time || "") &&
+    String(left.barber || "") === String(right.barber || "") &&
+    !left.open
+  );
+}
+
+function hasSlotConflict(appointment, ignoredIndex = -1) {
+  return state.appointments.some((item, index) => index !== ignoredIndex && isSameSlot(item, appointment));
+}
+
+function formatDateTitle(dateText) {
+  const date = new Date(`${dateText}T12:00:00`);
+  return new Intl.DateTimeFormat("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+  }).format(date);
+}
+
+function normalizePhone(phone) {
+  return String(phone || "").replace(/\D/g, "");
+}
+
+function buildWhatsAppLink(phone, message) {
+  const normalized = normalizePhone(phone);
+  if (!normalized) return "";
+  return `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`;
+}
+
+function applyTemplate(template, client) {
+  return template
+    .replaceAll("{{nome}}", client.name || "cliente")
+    .replaceAll("{{serviço}}", client.favoriteService || "serviço")
+    .replaceAll("{{barbearia}}", currentShop().name || "barbearia");
+}
+
+function currentShop() {
+  return state.barbershops.find((shop) => shop.id === state.currentBarbershopId) || state.barbershops[0];
+}
+
+function periodFromTime(time) {
+  const hour = Number(String(time || "0").split(":")[0] || 0);
+  if (hour < 12) return "Manhã";
+  if (hour < 14) return "Almoço";
+  if (hour < 18) return "Tarde";
+  return "Noite";
+}
+
+function periodLabel(period) {
+  const labels = {
+    "Manhã": "da manhã",
+    Almoço: "do almoço",
+    Tarde: "da tarde",
+    Noite: "da noite",
+  };
+  return labels[period] || String(period || "do dia").toLowerCase();
+}
+
+function dayAppointments() {
+  return state.appointments
+    .map((item, originalIndex) => ({ ...item, originalIndex }))
+    .filter((item) => appointmentDate(item) === selectedScheduleDate())
+    .sort((a, b) => String(a.time || "").localeCompare(String(b.time || "")));
+}
+
+function bestOpenSlot() {
+  const openSlots = dayAppointments().filter((item) => item.open);
+  if (!openSlots.length) return null;
+  const selectedDate = selectedScheduleDate();
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const futureSlots = openSlots.filter((slot) => {
+    if (selectedDate !== todayIso()) return true;
+    const [hour, minute] = String(slot.time || "00:00").split(":").map(Number);
+    return hour * 60 + (minute || 0) >= nowMinutes;
+  });
+  return futureSlots[0] || openSlots[0];
+}
+
+function highIntentClients() {
+  return [...(state.inactiveClients || [])].sort((a, b) => {
+    const intentScore = { Alta: 3, "Média": 2, Baixa: 1 };
+    return (intentScore[b.intent] || 0) - (intentScore[a.intent] || 0) || Number(b.value || 0) - Number(a.value || 0);
+  });
+}
+
+function waitlistForSlot(slot) {
+  const period = slot  ?periodFromTime(slot.time) : null;
+  return (state.waitlist || []).find((item) => item.period === period) || (state.waitlist || [])[0];
+}
+
+function clientDetailsByName(name) {
+  const client = (state.clients || []).find((item) => item.name === name);
+  const inactive = (state.inactiveClients || []).find((item) => item.name === name);
+  if (client || inactive) {
+    return {
+      name,
+      phone: client?.phone || inactive?.phone || "",
+      value: Number(inactive?.value || client?.ticket || 0),
+      favoriteService: client?.favoriteService || "",
+      intent: inactive?.intent || client?.status || "",
+    };
+  }
+  return null;
+}
+
+function suggestedClientForSlot(slot) {
+  const wait = waitlistForSlot(slot);
+  const waitClient = wait  ?clientDetailsByName(wait.best) : null;
+  if (waitClient) return waitClient;
+  const client = highIntentClients()[0];
+  const details = client  ?clientDetailsByName(client.name) : null;
+  return client
+     ?{
+      name: client.name,
+      phone: client.phone || details?.phone || "",
+      value: Number(client.value || 0),
+      favoriteService: client.favoriteService || slot.service || "",
+      intent: client.intent || "",
+    }
+    : null;
+}
+
+function buildInviteMessage(slot, client) {
+  const shop = currentShop().name || "barbearia";
+  const service = slot.service && slot.service !== "Corte ou barba"  ?` para ${slot.service}` : "";
+  return `Oi, ${client.name}! Aqui é da ${shop}. Abriu um horário hoje às ${slot.time} com ${slot.barber}${service}. Quer que eu reserve para você?`;
+}
+
+function invitePayloadFromSlot(index) {
+  const slot = state.appointments[index];
+  if (!slot || !slot.open) return null;
+  const client = suggestedClientForSlot({ ...slot, originalIndex: index });
+  if (!client) return null;
+  const message = buildInviteMessage(slot, client);
+  return {
+    appointmentIndex: index,
+    slot,
+    client,
+    message,
+    link: buildWhatsAppLink(client.phone, message),
+  };
+}
+
+function openInviteModal(index) {
+  const payload = invitePayloadFromSlot(index);
+  if (!payload) {
+    showToast("Não há cliente sugerido para este horário agora.");
+    return;
+  }
+  pendingInvite = payload;
+  inviteModalTitle.textContent = `Preencher ${payload.slot.time} com ${payload.slot.barber}`;
+  inviteSummary.innerHTML = `
+    <article>
+      <strong>${payload.slot.time}</strong>
+      <span>${payload.slot.barber} · ${payload.slot.service}</span>
+    </article>
+    <article>
+      <strong>${payload.client.name}</strong>
+      <span>${payload.client.intent || "Cliente sugerido"} · ${money.format(Number(payload.client.value || 0))}</span>
+    </article>
+    <article>
+      <strong>${payload.link  ?"WhatsApp pronto" : "Sem telefone"}</strong>
+      <span>${payload.link  ?"Link será registrado no histórico" : "Copie a mensagem manualmente"}</span>
+    </article>
+  `;
+  inviteMessage.value = payload.message;
+  inviteModal.classList.remove("hidden");
+  inviteModal.setAttribute("aria-hidden", "false");
+}
+
+function closeInviteModal() {
+  pendingInvite = null;
+  inviteModal.classList.add("hidden");
+  inviteModal.setAttribute("aria-hidden", "true");
+}
+
+function completeSlotFromInvite(invite, status = "Agendado") {
+  const slot = state.appointments[invite.appointmentIndex];
+  if (!slot || !slot.open) return false;
+  slot.client = invite.client.name;
+  slot.status = status;
+  slot.open = false;
+  slot.recovered = true;
+  slot.invitedAt = new Date().toISOString();
+  state.recoveredRevenue += Number(invite.client.value || 0);
+  state.openSlots = state.appointments.filter((item) => item.open).length;
+  return true;
+}
+
+function addInviteHistory(status, shouldBook = false) {
+  if (!pendingInvite) return;
+  const message = inviteMessage.value.trim() || pendingInvite.message;
+  const entry = {
+    id: `msg-${Date.now().toString(36)}`,
+    type: "slot_invite",
+    client: pendingInvite.client.name,
+    phone: pendingInvite.client.phone || "",
+    message,
+    link: buildWhatsAppLink(pendingInvite.client.phone, message),
+    status,
+    appointmentIndex: pendingInvite.appointmentIndex,
+    time: pendingInvite.slot.time,
+    barber: pendingInvite.slot.barber,
+    service: pendingInvite.slot.service,
+    value: Number(pendingInvite.client.value || 0),
+    createdAt: new Date().toISOString(),
+  };
+  if (shouldBook) {
+    const booked = completeSlotFromInvite(pendingInvite, "Recuperado");
+    entry.status = booked  ?"Agendado" : "Horário indisponível";
+  }
+  state.messageHistory.unshift(entry);
+  saveState();
+  closeInviteModal();
+  renderAll();
+  showToast(entry.status === "Agendado"  ?"Convite registrado e horário agendado." : "Convite registrado no histórico.");
+}
+
+function renderPriorityBoard() {
+  if (!priorityList) return;
+  const slot = bestOpenSlot();
+  const clients = highIntentClients();
+  const hotClients = clients.filter((client) => client.intent === "Alta");
+  const selectedClients = hotClients.length  ?hotClients : clients.slice(0, 3);
+  const wait = waitlistForSlot(slot);
+  const pixPending = dayAppointments().filter((item) => item.status === "Sinal Pix" && !item.pixPaid);
+  const priorities = [];
+
+  if (slot) {
+    const period = wait?.period  ?periodLabel(wait.period) : periodLabel(periodFromTime(slot.time));
+    priorities.push({
+      strong: true,
+      title: `Preencher ${slot.time} com ${slot.barber}`,
+      text: wait
+         ?`${wait.people} clientes aguardam o período ${period}; melhor chance: ${wait.best} (${wait.chance}).`
+        : `${selectedClients.length} clientes sem retorno podem receber convite para esse horário.`,
+      button: `Preencher ${slot.time}`,
+      attrs: `data-fill-priority-slot="${slot.originalIndex}"`,
+      primary: true,
+    });
+  } else {
+    priorities.push({
+      strong: true,
+      title: "Agenda sem horários vagos agora",
+      text: "Use este momento para confirmar presenças e preparar clientes para encaixes futuros.",
+      button: "Ver agenda",
+      attrs: `data-priority-view="dashboard"`,
+      primary: false,
+    });
+  }
+
+  priorities.push({
+    title: `Chamar ${selectedClients.length || 0} clientes com maior chance de retorno`,
+    text: selectedClients.length
+       ?`Potencial estimado de ${money.format(selectedClients.reduce((sum, client) => sum + Number(client.value || 0), 0))}; comece por ${selectedClients[0].name}.`
+      : "Nenhum cliente sem retorno cadastrado para priorizar agora.",
+    button: "Selecionar clientes",
+    attrs: `data-priority-view="reactivation"`,
+  });
+
+  priorities.push(
+    pixPending.length
+       ?{
+        title: `Confirmar sinal Pix de ${pixPending.length} atendimento${pixPending.length > 1  ?"s" : ""}`,
+        text: `Reduz risco de falta em horários já reservados para hoje.`,
+        button: "Revisar sinais",
+        attrs: `data-priority-view="dashboard"`,
+      }
+      : {
+        title: "Revisar lista de espera para encaixes do dia",
+        text: wait  ?`${wait.people} clientes aguardam o período ${periodLabel(wait.period)}; melhor chance: ${wait.best} (${wait.chance}).` : "Use os períodos mais pedidos para ocupar cancelamentos sem improviso.",
+        button: "Abrir lista",
+        attrs: `data-priority-view="waitlist"`,
+      },
+  );
+
+  priorityList.innerHTML = priorities
+    .map(
+      (item, index) => `
+        <article class="priority-item ${item.strong  ?"strong" : ""}">
+          <span class="priority-number">${index + 1}</span>
+          <div>
+            <strong>${item.title}</strong>
+            <p>${item.text}</p>
+          </div>
+          <button class="${item.primary  ?"primary-button" : "tiny-button"}" ${item.attrs} type="button">${item.button}</button>
+        </article>
+      `,
+    )
+    .join("");
+
+  if (priorityHeaderAction) {
+    priorityHeaderAction.textContent = slot  ?"Ver retornos" : "Ver lista";
+    priorityHeaderAction.dataset.priorityView = slot  ?"reactivation" : "waitlist";
+  }
+
+  if (nextActionTitle && nextActionText) {
+    if (slot) {
+      const likelyClient = wait  ?clients.find((client) => client.name === wait.best) || selectedClients[0] : selectedClients[0];
+      nextActionTitle.textContent = `${slot.time} com ${slot.barber} está aberto`;
+      nextActionText.textContent = wait
+         ?`${wait.people} clientes preferem esse período; ${wait.best} tem ${wait.chance} de chance de resposta.`
+        : `${selectedClients.length} clientes com chance de retorno podem receber convite.`;
+      document.querySelector("#fillBestSlot").textContent = `Preencher ${slot.time}`;
+      if (prioritySignalChance) prioritySignalChance.textContent = wait?.chance || "70%";
+      if (prioritySignalTicket) prioritySignalTicket.textContent = money.format(Number(likelyClient.value || 0) || Number(slot.ticket || 85));
+      if (prioritySignalTime) prioritySignalTime.textContent = `${Math.max(3, Math.min(12, selectedClients.length * 2 + 2))} min`;
+    } else {
+      nextActionTitle.textContent = "Nenhum horário aberto no dia selecionado";
+      nextActionText.textContent = "Acompanhe confirmações, Pix pendentes e lista de espera para manter a agenda protegida.";
+      document.querySelector("#fillBestSlot").textContent = "Ver lista de espera";
+      if (prioritySignalChance) prioritySignalChance.textContent = "-";
+      if (prioritySignalTicket) prioritySignalTicket.textContent = money.format(0);
+      if (prioritySignalTime) prioritySignalTime.textContent = "0 min";
+    }
+  }
+}
+
+function persistCampaign(campaign) {
+  if (!apiEnabled) return Promise.resolve(campaign);
+  return apiFetch(`/api/campaigns/${campaign.id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(campaign),
+  })
+    .then((response) => (response.ok  ?response.json() : campaign))
+    .catch(() => campaign);
+}
+
+function renderMetrics() {
+  document.querySelector("#recoveredRevenue").textContent = money.format(state.recoveredRevenue);
+  const dayOpenSlots = state.appointments.filter((item) => appointmentDate(item) === selectedScheduleDate() && item.open).length;
+  document.querySelector("#openSlotsCount").textContent = String(dayOpenSlots);
+  document.querySelector("#inactiveCount").textContent = String((state.inactiveClients || []).length);
+  document.querySelector("#noshowAvoided").textContent = money.format(680);
+  const contacts = state.prospects.length;
+  const demos = state.prospects.filter((prospect) => ["Demo marcada", "Piloto proposto", "Piloto pago"].includes(prospect.status)).length;
+  const pilots = state.prospects.filter((prospect) => prospect.status === "Piloto pago").length;
+  document.querySelector("#contactsMetric").textContent = `${contacts}/10`;
+  document.querySelector("#demosMetric").textContent = `${demos}/5`;
+  document.querySelector("#pilotsMetric").textContent = `${pilots}/3`;
+}
+
+function renderSchedule() {
+  if (scheduleDate && !scheduleDate.value) {
+    scheduleDate.value = todayIso();
+  }
+  if (appointmentForm.elements.date && !appointmentForm.elements.date.value) {
+    appointmentForm.elements.date.value = selectedScheduleDate();
+  }
+  if (scheduleTitle) {
+    scheduleTitle.textContent = formatDateTitle(selectedScheduleDate());
+  }
+  const filter = document.querySelector("#barberFilter").value;
+  const appointments = state.appointments
+    .map((item, originalIndex) => ({ ...item, originalIndex }))
+    .filter((item) => appointmentDate(item) === selectedScheduleDate())
+    .filter((item) => filter === "all" || item.barber === filter);
+
+  scheduleList.innerHTML = appointments.length
+    ?
+    appointments
+    .map((item, index) => {
+      const className = item.open  ?"appointment open" : item.recovered  ?"appointment recovered" : "appointment";
+      const pillClass = item.open
+         ?"status-pill warning"
+        : item.recovered
+           ?"status-pill good"
+          : item.status === "Sinal Pix"
+             ?"status-pill pix"
+            : "status-pill";
+      const statusText = item.pixPaid  ?"Pix pago" : item.status;
+      const hasPixAction = item.status === "Sinal Pix" && !item.pixPaid;
+      const action = item.open
+        ?
+        `<div class="appointment-actions appointment-actions-two"><button class="tiny-button" data-fill-slot="${item.originalIndex}" type="button">Preencher</button><button class="tiny-button" data-edit-appointment="${item.originalIndex}" type="button">Editar</button></div>`
+        : `<div class="appointment-actions ${hasPixAction  ?"appointment-actions-three" : "appointment-actions-two"}">${hasPixAction  ?`<button class="tiny-button" data-mark-pix="${item.originalIndex}" type="button">Marcar Pix</button>` : ""}<button class="tiny-button" data-edit-appointment="${item.originalIndex}" type="button">Editar</button><button class="tiny-button" data-cancel-appointment="${item.originalIndex}" type="button">Cancelar</button></div>`;
+      const serviceText = [item.barber, item.service].filter(Boolean).join(" · ");
+
+      return `
+        <article class="${className}">
+          <div class="time">${item.time}</div>
+          <div class="appointment-body">
+            <div class="appointment-header">
+              <div class="appointment-main">
+                <strong>${item.client}</strong>
+                <span>${serviceText}</span>
+              </div>
+              <span class="${pillClass} appointment-status">${statusText}</span>
+            </div>
+            ${action}
+          </div>
+        </article>
+      `;
+    })
+    .join("")
+    : `<article class="empty-state"><strong>Nenhum horário nestá data</strong><span>Crie um agendamento manualmente ou libere horários pela página pública.</span></article>`;
+
+  document.querySelectorAll("[data-fill-slot]").forEach((button) => {
+    button.addEventListener("click", () => fillSlot(Number(button.dataset.fillSlot)));
+  });
+  document.querySelectorAll("[data-cancel-appointment]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const index = Number(button.dataset.cancelAppointment);
+      state.appointments[index] = {
+        ...state.appointments[index],
+        client: "Vago",
+        status: "Aberto",
+        open: true,
+        recovered: false,
+      };
+      state.openSlots = state.appointments.filter((item) => item.open).length;
+      saveState();
+      renderAll();
+      showToast("Horário cancelado e reaberto.");
+    });
+  });
+  document.querySelectorAll("[data-mark-pix]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const index = Number(button.dataset.markPix);
+      const appointment = state.appointments[index];
+      appointment.pixPaid = true;
+      appointment.pixPaidAt = new Date().toISOString();
+      state.pixCharges.unshift({
+        id: `pix-${Date.now().toString(36)}`,
+        appointmentId: appointment.id || `legacy-${index}`,
+        client: appointment.client,
+        amount: Number(state.integrations.pix.depositAmount || 15),
+        status: "Pago manualmente",
+        paidAt: appointment.pixPaidAt,
+      });
+      saveState();
+      renderAll();
+      showToast("Sinal Pix marcado como pago.");
+    });
+  });
+  document.querySelectorAll("[data-edit-appointment]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const index = Number(button.dataset.editAppointment);
+      const appointment = state.appointments[index];
+      appointmentForm.elements.editIndex.value = String(index);
+      appointmentForm.elements.date.value = appointmentDate(appointment);
+      appointmentForm.elements.time.value = appointment.time || "";
+      appointmentForm.elements.barber.value = appointment.barber || "";
+      appointmentForm.elements.client.value = appointment.client || "";
+      appointmentForm.elements.service.value = appointment.service || "";
+      appointmentForm.elements.status.value = appointment.status || "Confirmado";
+      document.querySelector("#appointmentSubmit").textContent = "Salvar";
+      showToast("Edite o horário no formulário de agenda.");
+    });
+  });
+}
+
+function fillSlot(index) {
+  openInviteModal(index);
+}
+
+function renderSuggestions() {
+  const clients = highIntentClients();
+  const hotClients = clients.filter((client) => client.intent === "Alta");
+  const selectedClients = hotClients.length  ?hotClients : clients.slice(0, 3);
+  const selectedRevenue = selectedClients.reduce((sum, client) => sum + Number(client.value || 0), 0);
+  const pixPending = dayAppointments().filter((item) => item.status === "Sinal Pix" && !item.pixPaid);
+  const frequentClients = (state.clients || []).filter((client) => client.status !== "Inativo").length || Math.max(1, Math.round((state.clubPlans || []).reduce((sum, plan) => sum + Number(plan.subscribers || 0), 0) / 6));
+  const frequentLabel = `${frequentClients} cliente${frequentClients === 1  ?"" : "s"} frequente${frequentClients === 1  ?"" : "s"}`;
+  const suggestions = [
+    { title: `Chamar ${selectedClients.length} clientes para retorno`, subtitle: `Potencial estimado de ${money.format(selectedRevenue)}`, action: "reactivation", button: "Selecionar clientes" },
+    {
+      title: pixPending.length  ?`Revisar sinal de ${pixPending.length} atendimento${pixPending.length > 1  ?"s" : ""}` : "Preparar lista para cancelamentos",
+      subtitle: pixPending.length  ?"Reduz risco de falta hoje" : "Mantém encaixes prontos para o dia",
+      action: "pix",
+      button: pixPending.length  ?"Ver agenda" : "Abrir lista",
+    },
+    { title: `Oferecer fidelização para ${frequentLabel}`, subtitle: `Receita prevista de ${money.format(frequentClients * 129)}`, action: "club", button: "Ver clientes" },
+  ];
+
+  document.querySelector("#smartSuggestions").innerHTML = suggestions
+    .map(
+      (item) => `
+        <div class="suggestion">
+          <div>
+            <strong>${item.title}</strong>
+            <span>${item.subtitle}</span>
+          </div>
+          <button class="tiny-button" data-suggestion="${item.action}" type="button">${item.button}</button>
+        </div>
+      `,
+    )
+    .join("");
+
+  document.querySelectorAll("[data-suggestion]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const action = button.dataset.suggestion;
+      if (action === "reactivation") {
+        document.querySelector('[data-view="reactivation"]').click();
+        state.inactiveClients.forEach((client) => {
+          client.selected = client.intent === "Alta";
+        });
+        saveState();
+        renderInactiveClients();
+        showToast("Clientes quentes selecionados para campanha de retorno.");
+        return;
+      }
+
+      if (action === "club") {
+        document.querySelector('[data-view="club"]').click();
+        showToast("Ofertas de clube prontas para clientes frequentes.");
+        return;
+      }
+
+      const pixPending = dayAppointments().filter((item) => item.status === "Sinal Pix" && !item.pixPaid);
+      document.querySelector(`[data-view="${pixPending.length  ?"dashboard" : "waitlist"}"]`).click();
+      showToast(pixPending.length  ?"Revise os sinais Pix pendentes na agenda." : "Lista aberta para preparar encaixes.");
+    });
+  });
+}
+
+function renderInactiveClients() {
+  const clients = state.inactiveClients || [];
+  const highIntent = clients.filter((client) => client.intent === "Alta");
+  const totalPotential = clients.reduce((sum, client) => sum + Number(client.value || 0), 0);
+  const maxDays = clients.reduce((max, client) => Math.max(max, Number(client.lastVisit || 0)), 0);
+  const highIntentSummary = document.querySelector("#highIntentSummary");
+  const potentialSummary = document.querySelector("#potentialSummary");
+  const windowSummary = document.querySelector("#windowSummary");
+
+  if (highIntentSummary) highIntentSummary.textContent = String(highIntent.length);
+  if (potentialSummary) potentialSummary.textContent = money.format(totalPotential);
+  if (windowSummary) windowSummary.textContent = `${maxDays} dias`;
+
+  inactiveClients.innerHTML = `
+    <div class="return-table-head" aria-hidden="true">
+      <span>Cliente</span>
+      <span>Última visita</span>
+      <span>Ticket estimado</span>
+      <span>Chance</span>
+      <span>Seleção</span>
+    </div>
+    ${clients
+      .map((client, index) => {
+        const intentLabel = client.intent === "Média"  ?"Média" : client.intent;
+        return `
+          <label class="client-row return-row">
+            <span class="return-client">
+              <input class="return-checkbox" type="checkbox" data-client="${index}" ${client.selected ?"checked" : ""} />
+              <span>
+                <strong>${client.name}</strong>
+                <small>${client.favoriteService || "Serviço preferido não informado"}</small>
+              </span>
+            </span>
+            <span class="return-cell">
+              <small>Última visita</small>
+              <strong>${client.lastVisit} dias</strong>
+            </span>
+            <span class="return-cell">
+              <small>Ticket estimado</small>
+              <strong>${money.format(client.value)}</strong>
+            </span>
+            <span class="return-cell">
+              <small>Chance de retorno</small>
+              <strong>${intentLabel}</strong>
+            </span>
+            <span class="${client.selected ?"status-pill good" : "status-pill"}">${client.selected ?"Selecionado" : "Não selecionado"}</span>
+          </label>
+        `;
+      })
+      .join("")}
+  `;
+
+  document.querySelectorAll("[data-client]").forEach((input) => {
+    input.addEventListener("change", () => {
+      state.inactiveClients[Number(input.dataset.client)].selected = input.checked;
+      saveState();
+      updateCampaignResult();
+    });
+  });
+
+  updateCampaignResult();
+}
+
+function updateCampaignResult() {
+  const selected = state.inactiveClients.filter((client) => client.selected);
+  const total = selected.reduce((sum, client) => sum + client.value, 0);
+  document.querySelector("#campaignResult").textContent = `${selected.length} clientes selecionados. Potencial: ${money.format(total)}.`;
+}
+
+function renderWaitlist() {
+  waitlistGrid.innerHTML = state.waitlist
+    .map(
+      (item) => `
+        <article class="wait-card">
+          <strong>${item.period}</strong>
+          <span>${item.people} clientes esperando · melhor chance: ${item.best} (${item.chance})</span>
+          <button class="tiny-button" data-wait-period="${item.period}" type="button">Enviar convites</button>
+        </article>
+      `,
+    )
+    .join("");
+
+  document.querySelectorAll("[data-wait-period]").forEach((button) => {
+    button.addEventListener("click", () => {
+      showToast(`Convites enviados para a lista do período ${button.dataset.waitPeriod}.`);
+    });
+  });
+}
+
+function renderCampaignHistory() {
+  if (!campaignHistory) return;
+  const campaigns = state.campaigns || [];
+  campaignHistory.innerHTML = campaigns
+    .slice(0, 4)
+    .map(
+      (campaign) => `
+        <article>
+          <strong>${campaign.name}</strong>
+          <span>${campaign.status} · ${campaign.sent} enviados · ${campaign.responses} respostas · ${campaign.bookings} agendamentos · ${money.format(Number(campaign.revenue || 0))}</span>
+          <div class="campaign-actions">
+            <button class="tiny-button" data-campaign-action="pause" data-campaign-id="${campaign.id}" type="button">${campaign.status === "Pausada"  ?"Retomar" : "Pausar"}</button>
+            <button class="tiny-button" data-campaign-action="duplicate" data-campaign-id="${campaign.id}" type="button">Duplicar</button>
+            <button class="tiny-button" data-campaign-action="delete" data-campaign-id="${campaign.id}" type="button">Excluir</button>
+          </div>
+        </article>
+      `,
+    )
+    .join("");
+
+  document.querySelectorAll("[data-campaign-action]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const campaign = state.campaigns.find((item) => item.id === button.dataset.campaignId);
+      if (!campaign) return;
+      const action = button.dataset.campaignAction;
+      if (action === "delete") {
+        state.campaigns = state.campaigns.filter((item) => item.id !== campaign.id);
+        if (apiEnabled) await apiFetch(`/api/campaigns/${campaign.id}`, { method: "DELETE" }).catch(() => {});
+        saveState();
+        renderAll();
+        showToast("Campanha excluída.");
+        return;
+      }
+      if (action === "duplicate") {
+        const copy = { ...campaign, id: `camp-${Date.now().toString(36)}`, name: `${campaign.name} cópia`, status: "Rascunho", sent: 0, responses: 0, bookings: 0, revenue: 0 };
+        state.campaigns.unshift(copy);
+        saveState();
+        renderAll();
+        showToast("Campanha duplicada como rascunho.");
+        return;
+      }
+      campaign.status = campaign.status === "Pausada"  ?"Enviada" : "Pausada";
+      await persistCampaign(campaign);
+      saveState();
+      renderAll();
+      showToast(`Campanha ${campaign.status.toLowerCase()}.`);
+    });
+  });
+}
+
+function renderMessageOutbox() {
+  if (!messageOutbox) return;
+  const messages = (state.messageHistory || []).slice(0, 6);
+  messageOutbox.innerHTML = messages.length
+    ?
+    messages
+        .map(
+          (message) => {
+            const statusClass = message.status === "Agendado"  ?"good" : message.status === "Sem resposta"  ?"warning" : "";
+            const details = [
+              message.time  ?`${message.time}${message.barber  ?` com ${message.barber}` : ""}` : "",
+              message.service || "",
+              message.value  ?`Ticket ${money.format(Number(message.value || 0))}` : "",
+            ].filter(Boolean).join(" · ");
+            return `
+            <article class="message-card">
+              <div class="message-card-main">
+                <div>
+                  <strong>${message.client}</strong>
+                  <span>${details || "Mensagem de retorno"}</span>
+                </div>
+                <span class="status-pill ${statusClass}">${message.status}</span>
+              </div>
+              <div class="message-meta">
+                <span>WhatsApp</span>
+                <strong>${message.phone || "sem número cadastrado"}</strong>
+              </div>
+              <div class="campaign-actions">
+                ${message.link  ?`<a class="tiny-button as-link" href="${message.link}" target="_blank" rel="noreferrer" data-message-sent="${message.id}">WhatsApp</a>` : ""}
+                <button class="tiny-button" data-copy-message="${message.id}" type="button">Copiar texto</button>
+                ${message.type === "slot_invite" && message.status !== "Agendado"  ?`<button class="tiny-button" data-invite-response="${message.id}" type="button">Respondeu</button><button class="tiny-button" data-invite-book="${message.id}" type="button">Agendar</button>` : ""}
+              </div>
+            </article>
+          `;
+          },
+        )
+        .join("")
+    : `<article><span>Nenhuma mensagem gerada ainda.</span></article>`;
+
+  document.querySelectorAll("[data-copy-message]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const message = state.messageHistory.find((item) => item.id === button.dataset.copyMessage);
+      if (!message) return;
+      try {
+        await navigator.clipboard.writeText(message.message);
+      } catch (error) {
+        // Clipboard can fail in local contexts; the message remains visible in history.
+      }
+      message.status = "Copiada";
+      saveState();
+      renderMessageOutbox();
+      showToast("Mensagem copiada.");
+    });
+  });
+
+  document.querySelectorAll("[data-message-sent]").forEach((link) => {
+    link.addEventListener("click", () => {
+      const message = state.messageHistory.find((item) => item.id === link.dataset.messageSent);
+      if (!message) return;
+      message.status = "Aberta no WhatsApp";
+      saveState();
+      renderMessageOutbox();
+    });
+  });
+
+  document.querySelectorAll("[data-invite-response]").forEach((button) => {
+    button.addEventListener("click", () => {
+      updateInviteStatus(button.dataset.inviteResponse, "Cliente respondeu");
+    });
+  });
+
+  document.querySelectorAll("[data-invite-book]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const message = state.messageHistory.find((item) => item.id === button.dataset.inviteBook);
+      if (message) bookInvite(message);
+    });
+  });
+}
+
+function bookInvite(message) {
+  const slot = state.appointments[Number(message.appointmentIndex)];
+  if (!slot || !slot.open) {
+    message.status = "Horário indisponível";
+    saveState();
+    renderAll();
+    showToast("Esse horário não está mais disponível.");
+    return;
+  }
+  slot.client = message.client;
+  slot.status = "Recuperado";
+  slot.open = false;
+  slot.recovered = true;
+  state.recoveredRevenue += Number(message.value || 0);
+  state.openSlots = state.appointments.filter((item) => item.open).length;
+  message.status = "Agendado";
+  message.bookedAt = new Date().toISOString();
+  saveState();
+  renderAll();
+  showToast("Cliente agendado e receita recuperada registrada.");
+}
+
+function updateInviteStatus(id, status) {
+  const message = state.messageHistory.find((item) => item.id === id);
+  if (!message) return;
+  message.status = status;
+  message.updatedAt = new Date().toISOString();
+  saveState();
+  renderAll();
+  showToast(status === "Sem resposta"  ?"Convite marcado como sem resposta." : "Status do convite atualizado.");
+}
+
+function renderDashboardInviteQueue() {
+  if (!dashboardInviteQueue) return;
+  const invites = (state.messageHistory || []).filter((message) => message.type === "slot_invite").slice(0, 4);
+  dashboardInviteQueue.innerHTML = invites.length
+    ?
+    invites
+        .map((message) => {
+          const isFinal = ["Agendado", "Sem resposta", "Horário indisponível"].includes(message.status);
+          const canMarkResponse = !isFinal && message.status !== "Cliente respondeu";
+          const canBook = !isFinal;
+          const canMiss = !isFinal;
+          const actions = [
+            canMarkResponse  ?`<button class="tiny-button" data-dashboard-invite-response="${message.id}" type="button">Respondeu</button>` : "",
+            canBook  ?`<button class="tiny-button" data-dashboard-invite-book="${message.id}" type="button">Agendar</button>` : "",
+            canMiss  ?`<button class="tiny-button" data-dashboard-invite-miss="${message.id}" type="button">Sem resposta</button>` : "",
+          ].join("");
+          const statusClass = message.status === "Agendado"  ?"good" : message.status === "Sem resposta"  ?"warning" : message.status === "Cliente respondeu"  ?"info" : "";
+          return `
+            <article class="invite-card">
+              <div class="invite-card-main">
+                <div>
+                  <strong>${message.time || "--:--"} · ${message.client}</strong>
+                  <span>${[message.barber, message.service].filter(Boolean).join(" · ") || "Encaixe sugerido"}</span>
+                </div>
+                <span class="status-pill ${statusClass}">${message.status}</span>
+              </div>
+              <div class="invite-card-meta">
+                <span>Ticket estimado</span>
+                <strong>${money.format(Number(message.value || 0))}</strong>
+              </div>
+              ${actions  ?`<div class="campaign-actions">${actions}</div>` : ""}
+            </article>
+          `;
+        })
+        .join("")
+    : `<article><span>Nenhum convite enviado ainda. Use a prioridade principal para iniciar.</span></article>`;
+
+  document.querySelectorAll("[data-dashboard-invite-response]").forEach((button) => {
+    button.addEventListener("click", () => updateInviteStatus(button.dataset.dashboardInviteResponse, "Cliente respondeu"));
+  });
+  document.querySelectorAll("[data-dashboard-invite-miss]").forEach((button) => {
+    button.addEventListener("click", () => updateInviteStatus(button.dataset.dashboardInviteMiss, "Sem resposta"));
+  });
+  document.querySelectorAll("[data-dashboard-invite-book]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const message = state.messageHistory.find((item) => item.id === button.dataset.dashboardInviteBook);
+      if (message) bookInvite(message);
+    });
+  });
+}
+
+function renderClubPlans() {
+  clubPlans.innerHTML = state.clubPlans
+    .map(
+      (plan) => `
+        <article class="club-plan">
+          <strong>${plan.name}</strong>
+          <span>${money.format(plan.price)}/mês</span>
+          <p>${plan.perk}</p>
+          <small>${plan.subscribers} assinantes ativos</small>
+          <button class="tiny-button" type="button">Enviar oferta</button>
+        </article>
+      `,
+    )
+    .join("");
+
+  const total = state.clubPlans.reduce((sum, plan) => sum + plan.price * plan.subscribers, 0);
+  document.querySelector("#clubRevenue").textContent = money.format(total);
+}
+
+function renderSetup() {
+  const steps = [
+    ["Serviços e duração", "Corte, barba, combo e preços configurados"],
+    ["Equipe", "3 profissionais com agenda individual"],
+    ["WhatsApp", "Mensagens de confirmação e retorno prontas"],
+    ["Clientes importados", "128 clientes carregados para reativação"],
+    ["Primeira campanha", "Segmento de 45+ dias pronto para envio"],
+  ];
+
+  setupList.innerHTML = steps
+    .map(
+      ([title, subtitle]) => `
+        <div class="setup-item">
+          <div>
+            <strong>${title}</strong>
+            <span>${subtitle}</span>
+          </div>
+          <span class="setup-check">?</span>
+        </div>
+      `,
+    )
+    .join("");
+}
+
+function renderOnboarding() {
+  if (!onboardingList) return;
+  const items = [
+    ["Clientes importados", state.clients.length > 0],
+    ["Serviços configurados", state.services.length > 0],
+    ["Profissionais configurados", state.professionals.length > 0],
+    ["Mensagem de retorno pronta", Boolean(document.querySelector("#campaignText").value)],
+    ["Campanha registrada", state.campaigns.length > 0],
+  ];
+  onboardingList.innerHTML = items
+    .map(
+      ([label, checked]) => `
+        <label>
+          <input type="checkbox" ${checked  ?"checked" : ""} disabled />
+          <span>${label}</span>
+        </label>
+      `,
+    )
+    .join("");
+}
+
+function renderOperationsSetup() {
+  if (servicesList) {
+    servicesList.innerHTML = state.services
+      .map(
+        (service) => `
+          <article class="setup-entity-card">
+            <div>
+              <strong>${service.name}</strong>
+              <span>Preço ${money.format(Number(service.price || 0))} · duração ${service.duration} min</span>
+            </div>
+            <button class="tiny-button" data-delete-service="${service.id}" type="button">Remover</button>
+          </article>
+        `,
+      )
+      .join("");
+  }
+
+  if (professionalsList) {
+    professionalsList.innerHTML = state.professionals
+      .map(
+        (professional) => `
+          <article class="setup-entity-card">
+            <div>
+              <strong>${professional.name}</strong>
+              <span>${professional.commission}% comissão · ${professional.active  ?"ativo" : "inativo"}</span>
+            </div>
+            <button class="tiny-button" data-delete-professional="${professional.id}" type="button">Remover</button>
+          </article>
+        `,
+      )
+      .join("");
+  }
+
+  document.querySelectorAll("[data-delete-service]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.services = state.services.filter((service) => service.id !== button.dataset.deleteService);
+      saveState();
+      renderAll();
+      showToast("Serviço removido.");
+    });
+  });
+
+  document.querySelectorAll("[data-delete-professional]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.professionals = state.professionals.filter((professional) => professional.id !== button.dataset.deleteProfessional);
+      saveState();
+      renderAll();
+      showToast("Profissional removido.");
+    });
+  });
+}
+
+function renderShopSettings() {
+  const form = document.querySelector("#shopSettingsForm");
+  if (!form) return;
+  const shop = currentShop();
+  form.elements.name.value = shop.name || "";
+  form.elements.city.value = shop.city || "";
+  form.elements.openTime.value = shop.openTime || "09:00";
+  form.elements.closeTime.value = shop.closeTime || "19:00";
+  form.elements.depositRequired.checked = Boolean(state.publicBooking.depositRequired);
+}
+
+function renderIntegrations() {
+  if (!integrationStatus) return;
+  const whatsapp = state.integrations.whatsapp || defaultState.integrations.whatsapp;
+  const pix = state.integrations.pix || defaultState.integrations.pix;
+  const publicBooking = state.publicBooking || defaultState.publicBooking;
+  const fields = {
+    whatsappProvider: whatsapp.provider || "whatsapp_cloud_api",
+    whatsappMode: whatsapp.mode || "sandbox",
+    whatsappPhoneId: whatsapp.phoneNumberId || "",
+    whatsappTemplate: whatsapp.defaultTemplate || "retorno_cliente_sumido",
+    pixProvider: pix.provider || "manual_pix",
+    pixMode: pix.mode || "sandbox",
+    pixKey: pix.key || "",
+    pixDepositAmount: pix.depositAmount || 15,
+    publicBookingSlug: publicBooking.slug || "barbearia-alpha",
+  };
+
+  Object.entries(fields).forEach(([id, value]) => {
+    const input = document.querySelector(`#${id}`);
+    if (input) input.value = value;
+  });
+
+  const publicToggle = document.querySelector("#publicBookingEnabled");
+  if (publicToggle) publicToggle.checked = Boolean(publicBooking.enabled);
+
+  const publicUrl = `${window.location.origin}/public.html?barbearia=${publicBooking.slug || "barbearia-alpha"}`;
+  if (bookingLink) {
+    bookingLink.textContent = publicUrl;
+    bookingLink.href = publicUrl;
+  }
+
+  integrationStatus.innerHTML = `
+    <article class="integration-status-card">
+      <strong>WhatsApp</strong>
+      <span>Status: ${whatsapp.status || "simulado"}</span>
+      <small>${whatsapp.mode || "sandbox"} · template ${whatsapp.defaultTemplate || "padrão"}</small>
+    </article>
+    <article class="integration-status-card">
+      <strong>Pix</strong>
+      <span>Status: ${pix.status || "simulado"}</span>
+      <small>sinal ${money.format(Number(pix.depositAmount || 15))} · ${pix.key  ?"chave configurada" : "sem chave"}</small>
+    </article>
+  `;
+}
+
+function renderTenantAndPermissions() {
+  if (barbershopList) {
+    barbershopList.innerHTML = (state.barbershops || [])
+      .map(
+        (barbershop) => `
+          <article>
+            <div>
+              <strong>${barbershop.name}</strong>
+              <span>${barbershop.city || "cidade não informada"} · ${barbershop.plan || "Plano"} · ${money.format(Number(barbershop.monthlyPrice || 0))}/mês</span>
+            </div>
+            <span class="status-pill ${barbershop.active  ?"good" : "warning"}">${barbershop.active  ?"Ativa" : "Pausada"}</span>
+          </article>
+        `,
+      )
+      .join("");
+  }
+
+  if (userList) {
+    const roleLabels = { owner: "Dono", manager: "Gerente", barber: "Barbeiro" };
+    userList.innerHTML = (state.users || [])
+      .map(
+        (user) => `
+          <article>
+            <div>
+              <strong>${user.name}</strong>
+              <span>${user.email} · ${roleLabels[user.role] || user.role || "Equipe"}</span>
+            </div>
+            <span class="status-pill ${user.active !== false  ?"good" : "warning"}">${user.active !== false  ?"Ativo" : "Inativo"}</span>
+          </article>
+        `,
+      )
+      .join("");
+  }
+}
+
+function renderAudit() {
+  if (!auditList) return;
+  const logs = (state.auditLogs || []).slice(0, 10);
+  auditList.innerHTML = logs.length
+    ?
+    logs
+        .map(
+          (log) => `
+            <article>
+              <div>
+                <strong>${log.action}</strong>
+                <span>${new Date(log.at).toLocaleString("pt-BR")} · ${log.actor || "sistema"}</span>
+              </div>
+            </article>
+          `,
+        )
+        .join("")
+    : `<article><span>Nenhuma ação registrada ainda.</span></article>`;
+}
+
+function renderPilot() {
+  const steps = [
+    ["Mostrar a dor", "Comece pela frase: cadeira vazia não vira faturamento."],
+    ["Quantificar perda", "Pergunte quantos horários vagos e faltas aconteceram na última semana."],
+    ["Mostrar recuperação", "Use o botão Resolver agora para preencher um horário vago."],
+    ["Abrir reativação", "Mostre clientes sumidos e selecione os mais quentes."],
+    ["Fechar piloto", "Ofereça R$ 197/mês + implantação assistida com meta de recuperar a mensalidade."],
+  ];
+
+  const questions = [
+    "Quantos profissionais atendem hoje",
+    "Como vocês controlam agenda e confirmação",
+    "Quantos clientes faltam ou cancelam por semana",
+    "O que vocês fazem quando sobra horário vazio",
+    "Você pagaria R$ 197/mês se recuperasse mais do que issó em atendimentos",
+  ];
+
+  pilotSteps.innerHTML = steps
+    .map(
+      ([title, text], index) => `
+        <article class="pilot-step">
+          <span class="step-number">${index + 1}</span>
+          <div>
+            <strong>${title}</strong>
+            <p>${text}</p>
+          </div>
+        </article>
+      `,
+    )
+    .join("");
+
+  pilotQuestions.innerHTML = questions
+    .map(
+      (question, index) => `
+        <article class="question-item">
+          <span class="step-number">${index + 1}</span>
+          <div>
+            <strong>Pergunta ${index + 1}</strong>
+            <p>${question}</p>
+          </div>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function renderPipeline() {
+  const statusClass = {
+    "Contato inicial": "warning",
+    "Demo marcada": "",
+    "Piloto proposto": "good",
+    "Piloto pago": "good",
+  };
+
+  pipelineBoard.innerHTML = state.prospects
+    .map(
+      (prospect, index) => `
+        <article class="pipeline-card">
+          <header>
+            <div>
+              <strong>${prospect.barbershop}</strong>
+              <span>${prospect.owner} · ${prospect.team} profissionais</span>
+            </div>
+            <span class="status-pill ${statusClass[prospect.status] || ""}">${prospect.status}</span>
+          </header>
+          <p>${prospect.pain}</p>
+          <span>Próximo passo: ${prospect.next}</span>
+          <div class="pipeline-actions">
+            <button class="tiny-button" data-pipeline-action="advance" data-prospect="${index}" type="button">Avançar</button>
+            <button class="tiny-button" data-pipeline-action="demo" data-prospect="${index}" type="button">Abrir roteiro</button>
+          </div>
+        </article>
+      `,
+    )
+    .join("");
+
+  document.querySelectorAll("[data-pipeline-action]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const prospect = state.prospects[Number(button.dataset.prospect)];
+      if (!prospect) return;
+
+      if (button.dataset.pipelineAction === "demo") {
+        document.querySelector('[data-view="pilot"]').click();
+        showToast(`Use o roteiro de piloto com ${prospect.owner}, da ${prospect.barbershop}.`);
+        return;
+      }
+
+      advanceProspect(prospect);
+      renderAll();
+    });
+  });
+}
+
+function renderClientsAdmin() {
+  if (!clientAdminList) return;
+  if (!state.clients.length) {
+    clientAdminList.innerHTML = `
+      <div class="client-admin-card">
+        <div>
+          <strong>Nenhum cliente cadastrado</strong>
+          <span>Importe um CSV ou cadastre manualmente para iniciar campanhas reais.</span>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  clientAdminList.innerHTML = state.clients
+    .map(
+      (client) => `
+        <article class="client-admin-card">
+          <div>
+            <strong>${client.name}</strong>
+            <span>${client.phone || "sem WhatsApp"} · ${client.favoriteService || "serviço não informado"} · ${client.professional || "sem profissional"}</span>
+          </div>
+          <span>${money.format(Number(client.ticket || 0))}</span>
+          <div class="campaign-actions">
+            <button class="tiny-button" data-client-history="${client.id}" type="button">Histórico</button>
+            <button class="tiny-button" data-delete-client="${client.id}" type="button">Remover</button>
+          </div>
+        </article>
+      `,
+    )
+    .join("");
+
+  document.querySelectorAll("[data-delete-client]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const id = button.dataset.deleteClient;
+      state.clients = state.clients.filter((client) => client.id !== id);
+      saveState();
+      if (apiEnabled) {
+        await fetch(`/api/clients/${id}`, { method: "DELETE" }).catch(() => {});
+      }
+      renderAll();
+      showToast("Cliente removido da base.");
+    });
+  });
+  document.querySelectorAll("[data-client-history]").forEach((button) => {
+    button.addEventListener("click", () => renderClientHistory(button.dataset.clientHistory));
+  });
+}
+
+function renderClientHistory(clientId) {
+  const client = state.clients.find((item) => item.id === clientId);
+  if (!clientHistoryBox || !client) return;
+  const appointments = state.appointments.filter((item) => item.client === client.name);
+  const campaigns = (state.campaigns || []).filter((campaign) => (campaign.recipients || []).includes(client.name));
+  const total = appointments.reduce((sum, item) => {
+    const service = state.services.find((svc) => svc.name === item.service);
+    return sum + Number(service.price || client.ticket || 0);
+  }, 0);
+  clientHistoryBox.innerHTML = `
+    <span class="eyebrow">Histórico do cliente</span>
+    <strong>${client.name}</strong>
+    <p>${appointments.length} atendimentos registrados · ${campaigns.length} campanhas recebidas · ${money.format(total)} em valor estimado.</p>
+    <div class="report-list">
+      ${appointments.map((item) => `<article><strong>${item.time} · ${item.service}</strong><span>${item.barber} · ${item.status}</span></article>`).join("") || "<article><span>Nenhum atendimento registrado.</span></article>"}
+    </div>
+  `;
+}
+
+function renderRoi() {
+  const ticket = Number(document.querySelector("#roiTicket").value || 0);
+  const recovered = Number(document.querySelector("#roiRecovered").value || 0);
+  const monthly = Number(document.querySelector("#roiMonthly").value || 1);
+  const revenue = ticket * recovered;
+  const net = revenue - monthly;
+  const multiple = monthly > 0  ?revenue / monthly : 0;
+  const breakEven = ticket > 0  ?Math.ceil(monthly / ticket) : 0;
+
+  document.querySelector("#roiRevenue").textContent = money.format(revenue);
+  document.querySelector("#roiNet").textContent = money.format(net);
+  document.querySelector("#roiMultiple").textContent = `${multiple.toFixed(1)}x`;
+  document.querySelector("#breakEvenText").textContent = `Com ${breakEven} clientes recuperados, a mensalidade já se paga.`;
+  const realRevenue = (state.campaigns || []).reduce((sum, campaign) => sum + Number(campaign.revenue || 0), 0);
+  const realBookings = (state.campaigns || []).reduce((sum, campaign) => sum + Number(campaign.bookings || 0), 0);
+  document.querySelector("#realRoiRevenue").textContent = money.format(realRevenue);
+  document.querySelector("#realRoiSummary").textContent = `${realBookings} agendamentos atribuídos a campanhas registradas.`;
+}
+
+function renderReports() {
+  if (!reportGrid || !campaignReportList) return;
+  const campaigns = state.campaigns || [];
+  const appointments = state.appointments || [];
+  const paidPix = (state.pixCharges || []).filter((charge) => String(charge.status || "").toLowerCase().includes("pago"));
+  const sent = campaigns.reduce((sum, item) => sum + Number(item.sent || 0), 0);
+  const responses = campaigns.reduce((sum, item) => sum + Number(item.responses || 0), 0);
+  const bookings = campaigns.reduce((sum, item) => sum + Number(item.bookings || 0), 0);
+  const revenue = campaigns.reduce((sum, item) => sum + Number(item.revenue || 0), 0);
+  const confirmedRevenue = appointments
+    .filter((item) => !item.open)
+    .reduce((sum, appointment) => {
+      const service = state.services.find((item) => item.name === appointment.service);
+      return sum + Number(service?.price || appointment.value || 0);
+    }, 0);
+  const pixRevenue = paidPix.reduce((sum, charge) => sum + Number(charge.amount || 0), 0);
+  const responseRate = sent  ?Math.round((responses / sent) * 100) : 0;
+  const bookingRate = sent  ?Math.round((bookings / sent) * 100) : 0;
+  const openSlots = appointments.filter((item) => item.open).length;
+  const recoveredSlots = appointments.filter((item) => item.recovered).length;
+  const roi = revenue  ?(revenue / 197).toFixed(1) : "0.0";
+  const cards = [
+    ["Receita recuperada", money.format(revenue), "Baseada em campanhas registradas"],
+    ["Receita confirmada", money.format(confirmedRevenue), "Soma dos serviços agendados"],
+    ["Sinais Pix pagos", money.format(pixRevenue), `${paidPix.length} pagamentos marcados manualmente`],
+    ["Taxa de resposta", `${responseRate}%`, `${responses}/${sent} contatos responderam`],
+    ["Taxa de agendamento", `${bookingRate}%`, `${bookings}/${sent} contatos agendaram`],
+    ["Horários preenchidos", String(recoveredSlots), `${openSlots} horários ainda vagos`],
+    ["ROI sobre mensalidade", `${roi}x`, "Referência: R$ 197/mês"],
+    ["No-show evitado", money.format(Math.max(680, pixRevenue * 2)), "Estimativa por confirmação e sinal"],
+  ];
+  reportGrid.innerHTML = cards
+    .map(([title, value, subtitle]) => `<article class="report-card"><span>${title}</span><strong>${value}</strong><span>${subtitle}</span></article>`)
+    .join("");
+  campaignReportList.innerHTML = campaigns
+    .map((campaign) => {
+      const rate = campaign.sent  ?Math.round((Number(campaign.bookings || 0) / Number(campaign.sent || 1)) * 100) : 0;
+      return `<article><strong>${campaign.name}</strong><span>${campaign.status} · ${campaign.responses}/${campaign.sent} respostas · ${campaign.bookings} agendamentos · ${rate}% conversão · ${money.format(Number(campaign.revenue || 0))}</span></article>`;
+    })
+    .join("") || `<article><span>Nenhuma campanha registrada ainda.</span></article>`;
+}
+
+function advanceProspect(prospect) {
+  const flow = ["Contato inicial", "Demo marcada", "Piloto proposto", "Piloto pago"];
+  const currentIndex = flow.indexOf(prospect.status);
+  const nextStatus = flow[Math.min(currentIndex + 1, flow.length - 1)];
+  prospect.status = nextStatus;
+
+  const nextByStatus = {
+    "Demo marcada": "Mostrar protótipo",
+    "Piloto proposto": "Enviar oferta do piloto",
+    "Piloto pago": "Configurar primeira campanha",
+  };
+
+  prospect.next = nextByStatus[nextStatus] || prospect.next;
+  saveState();
+  showToast(`${prospect.barbershop} avanãou para: ${nextStatus}.`);
+}
+
+function renderAll() {
+  renderMetrics();
+  renderPriorityBoard();
+  renderSchedule();
+  renderSuggestions();
+  renderInactiveClients();
+  renderWaitlist();
+  renderCampaignHistory();
+  renderMessageOutbox();
+  renderDashboardInviteQueue();
+  renderClubPlans();
+  renderSetup();
+  renderOnboarding();
+  renderOperationsSetup();
+  renderShopSettings();
+  renderIntegrations();
+  renderTenantAndPermissions();
+  renderAudit();
+  renderPilot();
+  renderPipeline();
+  renderClientsAdmin();
+  renderRoi();
+  renderReports();
+}
+
+document.querySelectorAll(".nav-item").forEach((button) => {
+  button.addEventListener("click", () => {
+    document.querySelectorAll(".nav-item").forEach((item) => item.classList.remove("active"));
+    document.querySelectorAll(".view").forEach((view) => view.classList.remove("active"));
+    button.classList.add("active");
+    document.querySelector(`#${button.dataset.view}`).classList.add("active");
+    window.scrollTo(0, 0);
+  });
+});
+
+document.querySelector("#barberFilter").addEventListener("change", renderSchedule);
+scheduleDate.addEventListener("change", () => {
+  if (appointmentForm.elements.date) {
+    appointmentForm.elements.date.value = selectedScheduleDate();
+  }
+  renderAll();
+});
+
+document.querySelector("#fillBestSlot").addEventListener("click", () => {
+  const slot = bestOpenSlot();
+  if (!slot) {
+    document.querySelector('[data-view="waitlist"]').click();
+    showToast("Lista de espera aberta para preparar próximos encaixes.");
+    return;
+  }
+  fillSlot(slot.originalIndex);
+});
+
+document.querySelector("#closeInviteModal").addEventListener("click", closeInviteModal);
+document.querySelector("#sendInviteOnly").addEventListener("click", () => addInviteHistory("Convite enviado", false));
+document.querySelector("#sendInviteAndBook").addEventListener("click", () => addInviteHistory("Agendado", true));
+inviteModal.addEventListener("click", (event) => {
+  if (event.target === inviteModal) closeInviteModal();
+});
+
+document.addEventListener("click", (event) => {
+  const fillButton = event.target.closest("[data-fill-priority-slot]");
+  if (fillButton) {
+    fillSlot(Number(fillButton.dataset.fillPrioritySlot));
+    return;
+  }
+
+  const button = event.target.closest("[data-priority-view]");
+  if (!button) return;
+  const view = button.dataset.priorityView;
+  document.querySelector(`[data-view="${view}"]`).click();
+  if (view === "dashboard") {
+    showToast("Agenda aberta para revisar confirmações e horários do dia.");
+    return;
+  }
+  if (view === "reactivation") {
+    state.inactiveClients.forEach((client) => {
+      client.selected = client.intent === "Alta";
+    });
+    saveState();
+    renderInactiveClients();
+    showToast("Clientes com maior chance de retorno selecionados.");
+    return;
+  }
+  showToast("Lista de espera aberta para revisar encaixes.");
+});
+
+document.querySelector("#selectHighIntent").addEventListener("click", () => {
+  state.inactiveClients.forEach((client) => {
+    client.selected = client.intent === "Alta";
+  });
+  saveState();
+  renderInactiveClients();
+  showToast("Clientes com maior chance de retorno selecionados.");
+});
+
+document.querySelector("#sendCampaign").addEventListener("click", async () => {
+  const selected = state.inactiveClients.filter((client) => client.selected);
+  if (selected.length === 0) {
+    showToast("Selecione pelo menos um cliente antes de enviar.");
+    return;
+  }
+
+  const total = selected.reduce((sum, client) => sum + client.value, 0);
+  const estimatedRevenue = Math.round(total * 0.35);
+  state.recoveredRevenue += estimatedRevenue;
+  const campaign = {
+    id: `camp-${Date.now().toString(36)}`,
+    name: document.querySelector("#campaignSegment").value,
+    segment: document.querySelector("#campaignSegment").value,
+    sent: selected.length,
+    responses: Math.max(1, Math.round(selected.length * 0.45)),
+    bookings: Math.max(1, Math.round(selected.length * 0.28)),
+    revenue: estimatedRevenue,
+    recipients: selected.map((client) => client.name),
+    status: "Enviada",
+    createdAt: new Date().toISOString().slice(0, 10),
+  };
+  const template = document.querySelector("#campaignText").value;
+  const historyEntries = selected.map((target) => {
+    const client = state.clients.find((item) => item.name === target.name) || target;
+    const message = applyTemplate(template, client);
+    return {
+      id: `msg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      campaignId: campaign.id,
+      client: target.name,
+      phone: client.phone || "",
+      message,
+      link: buildWhatsAppLink(client.phone, message),
+      status: "Pronto para envio",
+      createdAt: new Date().toISOString(),
+    };
+  });
+  if (apiEnabled) {
+    const response = await apiFetch("/api/campaigns", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(campaign),
+    }).catch(() => null);
+    const savedCampaign = response?.ok  ?await response.json() : campaign;
+    state.campaigns.unshift(savedCampaign);
+    historyEntries.forEach((entry) => {
+      entry.campaignId = savedCampaign.id;
+    });
+  } else {
+    state.campaigns.unshift(campaign);
+  }
+  state.messageHistory.unshift(...historyEntries);
+  state.inactiveClients.forEach((client) => {
+    client.selected = false;
+  });
+  saveState();
+  renderAll();
+  showToast(`Campanha enviadá para ${selected.length} clientes. Potencial estimado: ${money.format(total)}.`);
+});
+
+document.querySelector("#saveCampaignDraft").addEventListener("click", () => {
+  const draft = {
+    id: `camp-${Date.now().toString(36)}`,
+    name: document.querySelector("#campaignSegment").value,
+    segment: document.querySelector("#campaignSegment").value,
+    sent: 0,
+    responses: 0,
+    bookings: 0,
+    revenue: 0,
+    recipients: [],
+    status: "Rascunho",
+    createdAt: new Date().toISOString().slice(0, 10),
+  };
+  state.campaigns.unshift(draft);
+  saveState();
+  renderAll();
+  showToast("Rascunho de campanha salvo.");
+});
+
+document.querySelector("#applySegment").addEventListener("click", () => {
+  const minDays = Number(document.querySelector("#segmentDays").value || 0);
+  const minTicket = Number(document.querySelector("#segmentTicket").value || 0);
+  const service = document.querySelector("#segmentService").value.trim().toLowerCase();
+  const professional = document.querySelector("#segmentProfessional").value.trim().toLowerCase();
+  const segmented = state.clients
+    .filter((client) => daysSince(client.lastVisit) >= minDays)
+    .filter((client) => Number(client.ticket || 0) >= minTicket)
+    .filter((client) => !service || String(client.favoriteService || "").toLowerCase().includes(service))
+    .filter((client) => !professional || String(client.professional || "").toLowerCase().includes(professional))
+    .map((client) => {
+      const inactiveDays = daysSince(client.lastVisit);
+      return {
+        name: client.name,
+        lastVisit: inactiveDays,
+        value: Number(client.ticket || 0),
+        intent: inactiveDays > 60 || Number(client.ticket || 0) >= 100  ?"Alta" : "Média",
+        selected: false,
+      };
+    });
+  state.inactiveClients = segmented;
+  saveState();
+  renderAll();
+  showToast(`${segmented.length} clientes encontrados na segmentação.`);
+});
+
+document.querySelector("#appointmentForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const formData = new FormData(event.currentTarget);
+  const appointment = {
+    id: `appt-${Date.now().toString(36)}`,
+    date: String(formData.get("date") || selectedScheduleDate()).trim(),
+    time: String(formData.get("time") || "").trim(),
+    barber: String(formData.get("barber") || "").trim(),
+    client: String(formData.get("client") || "").trim(),
+    service: String(formData.get("service") || "").trim(),
+    status: String(formData.get("status") || "Confirmado"),
+    open: String(formData.get("status") || "Confirmado") === "Aberto",
+  };
+  if (!appointment.date || !appointment.time || !appointment.barber || !appointment.client) {
+    showToast("Informé data, horário, barbeiro e cliente.");
+    return;
+  }
+  const editIndex = formData.get("editIndex");
+  if (editIndex !== "") {
+    const index = Number(editIndex);
+    if (hasSlotConflict(appointment, index)) {
+      showToast("Esse profissional já tem um horário confirmado nesse dia.");
+      return;
+    }
+    state.appointments[index] = { ...state.appointments[index], ...appointment, id: state.appointments[index].id || appointment.id };
+    state.appointments.sort((a, b) => `${appointmentDate(a)} ${a.time}`.localeCompare(`${appointmentDate(b)} ${b.time}`));
+    state.openSlots = state.appointments.filter((item) => item.open).length;
+    saveState();
+    event.currentTarget.reset();
+    document.querySelector("#appointmentSubmit").textContent = "Agendar";
+    renderAll();
+    showToast("Agendamento atualizado.");
+    return;
+  }
+
+  if (hasSlotConflict(appointment)) {
+    showToast("Esse profissional já tem um horário confirmado nesse dia.");
+    return;
+  }
+
+  if (apiEnabled) {
+    const response = await apiFetch("/api/appointments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(appointment),
+    }).catch(() => null);
+    if (response.ok) {
+      state.appointments.push(await response.json());
+    } else if (response.status === 409) {
+      showToast("Esse horário acabou de ser ocupado. Escolha outro horário.");
+      return;
+    } else {
+      state.appointments.push(appointment);
+    }
+  } else {
+    state.appointments.push(appointment);
+  }
+  state.appointments.sort((a, b) => `${appointmentDate(a)} ${a.time}`.localeCompare(`${appointmentDate(b)} ${b.time}`));
+  state.openSlots = state.appointments.filter((item) => item.open).length;
+  saveState();
+  event.currentTarget.reset();
+  document.querySelector("#appointmentSubmit").textContent = "Agendar";
+  renderAll();
+  showToast("Horário agendado.");
+});
+
+document.querySelector("#quickCampaign").addEventListener("click", () => {
+  document.querySelector('[data-view="reactivation"]').click();
+  showToast("Abra a campanha de retorno e selecione os clientes mais quentes.");
+});
+
+document.querySelector("#openTemplates").addEventListener("click", () => {
+  document.querySelector('[data-view="reactivation"]').click();
+});
+
+document.querySelector("#autoWaitlist").addEventListener("change", (event) => {
+  showToast(event.target.checked  ?"Lista de espera automática ativada." : "Lista de espera automática pausada.");
+});
+
+document.querySelector("#pixDeposit").addEventListener("change", (event) => {
+  showToast(event.target.checked  ?"Sinal Pix ativado para clientes novos." : "Sinal Pix desativado.");
+});
+
+document.querySelector("#addClubPlan").addEventListener("click", () => {
+  state.clubPlans.push({
+    name: "Barba semanal",
+    price: 119,
+    perk: "4 barbas por mês",
+    subscribers: 0,
+  });
+  saveState();
+  renderClubPlans();
+  showToast("Novo plano de clube adicionado.");
+});
+
+document.querySelector("#markPilotReady").addEventListener("click", () => {
+  showToast("Roteiro do piloto pronto para apresentar a um dono de barbearia.");
+});
+
+document.querySelector("#outreachChannel").addEventListener("change", (event) => {
+  const templates = {
+    WhatsApp:
+      "Oi, {{nome}}! Tudo bem? Estou criando uma ferramenta para barbearias que ajuda a recuperar clientes sumidos e preencher horários vagos pelo WhatsApp. Não é mais uma agenda: a ideia é mostrar dinheiro que está ficando parado e sugerir quem chamar primeiro. Posso te mostrar em 3 minutos",
+    Instagram:
+      "Fala, {{nome}}! Vi a {{barbearia}} e estou validando uma ferramenta para barbearias com equipe que querem reduzir horário vago e trazer clientes antigos de volta pelo WhatsApp. Possó te mandar uma demo rápida",
+    "Follow-up 1":
+      "Passando rápido aqui, {{nome}}. A ideia não é trocar sua agenda agora. É testar se dá para recuperar clientes antigos e preencher alguns horários vagos. Se fizer sentido, te mostro a tela em 3 minutos.",
+  };
+
+  document.querySelector("#outreachText").value = templates[event.target.value];
+});
+
+document.querySelector("#copyOutreach").addEventListener("click", async () => {
+  const message = document.querySelector("#outreachText").value;
+  try {
+    await navigator.clipboard.writeText(message);
+    showToast("Mensagem copiadá para a área de transferência.");
+  } catch (error) {
+    showToast("Mensagem pronta para copiar manualmente.");
+  }
+});
+
+document.querySelector("#prospectForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const formData = new FormData(event.currentTarget);
+  const barbershop = String(formData.get("barbershop") || "").trim();
+  const owner = String(formData.get("owner") || "").trim();
+  const team = Number(formData.get("team") || 1);
+  const pain = String(formData.get("pain") || "").trim();
+
+  if (!barbershop || !owner || !pain) {
+    showToast("Preencha barbearia, dono e dor principal.");
+    return;
+  }
+
+  state.prospects.push({
+    barbershop,
+    owner,
+    team,
+    pain,
+    status: "Contato inicial",
+    next: "Enviar mensagem curta",
+  });
+  saveState();
+  event.currentTarget.reset();
+  document.querySelector("#prospectTeam").value = "4";
+  renderAll();
+  showToast(`${barbershop} adicionada ao pipeline.`);
+});
+
+document.querySelector("#exportProspects").addEventListener("click", () => {
+  const headers = ["barbearia", "dono", "profissionais", "dor_principal", "status", "próximo_passo"];
+  const rows = state.prospects.map((prospect) => [
+    prospect.barbershop,
+    prospect.owner,
+    prospect.team,
+    prospect.pain,
+    prospect.status,
+    prospect.next,
+  ]);
+  const csv = [headers, ...rows]
+    .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))
+    .join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "prospects-businessbarber.csv";
+  link.click();
+  URL.revokeObjectURL(url);
+  showToast("Pipeline exportado em CSV.");
+});
+
+document.querySelector("#resetDemoData").addEventListener("click", () => {
+  resetState();
+  renderAll();
+  showToast("Dados de demo restáurados.");
+});
+
+["#roiTicket", "#roiRecovered", "#roiMonthly"].forEach((selector) => {
+  document.querySelector(selector).addEventListener("input", renderRoi);
+});
+
+document.querySelectorAll("[data-roi-scenario]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const scenarios = {
+      conservative: { ticket: 70, recovered: 3, monthly: 197 },
+      realistic: { ticket: 85, recovered: 5, monthly: 197 },
+      strong: { ticket: 110, recovered: 8, monthly: 197 },
+    };
+    const scenario = scenarios[button.dataset.roiScenario];
+    document.querySelector("#roiTicket").value = scenario.ticket;
+    document.querySelector("#roiRecovered").value = scenario.recovered;
+    document.querySelector("#roiMonthly").value = scenario.monthly;
+    renderRoi();
+    showToast(`Cenário ${button.textContent.trim().toLowerCase()} aplicado.`);
+  });
+});
+
+document.querySelector("#copyProposal").addEventListener("click", () => {
+  document.querySelector('[data-view="proposal"]').click();
+  showToast("Proposta pronta para revisar e enviar.");
+});
+
+document.querySelector("#copyProposalText").addEventListener("click", async () => {
+  const message = document.querySelector("#proposalText").value;
+  try {
+    await navigator.clipboard.writeText(message);
+    showToast("Texto da proposta copiado.");
+  } catch (error) {
+    showToast("Texto pronto para copiar manualmente.");
+  }
+});
+
+document.querySelector("#clientForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const formData = new FormData(event.currentTarget);
+  const client = {
+    id: `client-${Date.now().toString(36)}`,
+    name: String(formData.get("name") || "").trim(),
+    phone: String(formData.get("phone") || "").trim(),
+    ticket: Number(formData.get("ticket") || 0),
+    lastVisit: String(formData.get("lastVisit") || ""),
+    favoriteService: String(formData.get("favoriteService") || "Corte"),
+    preferredPeriod: "Tarde",
+    professional: "",
+    status: "Ativo",
+  };
+
+  if (!client.name) {
+    showToast("Informe o nome do cliente.");
+    return;
+  }
+
+  if (apiEnabled) {
+    const response = await fetch("/api/clients", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(client),
+    }).catch(() => null);
+    if (response.ok) {
+      state.clients.push(await response.json());
+    } else {
+      state.clients.push(client);
+    }
+  } else {
+    state.clients.push(client);
+  }
+
+  saveState();
+  event.currentTarget.reset();
+  document.querySelector("#clientTicket").value = "85";
+  renderAll();
+  showToast(`${client.name} salvo na base de clientes.`);
+});
+
+document.querySelector("#importClients").addEventListener("click", async () => {
+  const csv = document.querySelector("#clientCsv").value.trim();
+  if (!csv) {
+    showToast("Cole um CSV antes de importar.");
+    return;
+  }
+
+  if (apiEnabled) {
+    const response = await fetch("/api/import/clients", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ csv }),
+    }).catch(() => null);
+    if (response.ok) {
+      const result = await response.json();
+      state.clients = result.clients;
+      saveState();
+      renderAll();
+      showToast(`${result.imported} clientes importados.`);
+      return;
+    }
+  }
+
+  const [headerLine, ...rows] = csv.split(/\r\n/).filter(Boolean);
+  const headers = headerLine.split(",").map((header) => header.trim().toLowerCase());
+  const imported = rows.map((row) => {
+    const values = row.split(",").map((value) => value.trim());
+    const record = Object.fromEntries(headers.map((header, index) => [header, values[index] || ""]));
+    return {
+      id: `client-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      name: record.nome || record.name || "Cliente sem nome",
+      phone: record.whatsapp || record.telefone || record.phone || "",
+      lastVisit: record.ultima_visita || record["última_visita"] || record.lastvisit || "",
+      favoriteService: record.servico || record.service || "Corte",
+      preferredPeriod: record.periodo || record.period || "Tarde",
+      ticket: Number(record.ticket || record.valor || 0),
+      professional: record.profissional || record.professional || "",
+      status: "Importado",
+    };
+  });
+  state.clients.push(...imported);
+  saveState();
+  renderAll();
+  showToast(`${imported.length} clientes importados.`);
+});
+
+document.querySelector("#refreshClients").addEventListener("click", async () => {
+  await hydrateStateFromApi();
+  renderAll();
+  showToast(apiEnabled  ?"Clientes atualizados pelo backend." : "Backend indisponível; usando dados locais.");
+});
+
+document.querySelector("#refreshReports").addEventListener("click", () => {
+  renderReports();
+  showToast("Relatórios atualizados.");
+});
+
+const shopSettingsForm = document.querySelector("#shopSettingsForm");
+if (shopSettingsForm) {
+  shopSettingsForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const shop = currentShop();
+    if (!shop) return;
+    shop.name = String(formData.get("name") || "").trim();
+    shop.city = String(formData.get("city") || "").trim();
+    shop.openTime = String(formData.get("openTime") || "09:00");
+    shop.closeTime = String(formData.get("closeTime") || "19:00");
+    state.publicBooking.depositRequired = Boolean(formData.get("depositRequired"));
+    state.publicBooking.headline = `Agende seu horário na ${shop.name}`;
+    saveState();
+    renderAll();
+    showToast("Dados da barbearia atualizados.");
+  });
+}
+
+const integrationForm = document.querySelector("#integrationForm");
+if (integrationForm) {
+  integrationForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    state.integrations = {
+      ...state.integrations,
+      whatsapp: {
+        ...(state.integrations || {}).whatsapp,
+        provider: String(formData.get("whatsappProvider") || "whatsapp_cloud_api"),
+        mode: String(formData.get("whatsappMode") || "sandbox"),
+        phoneNumberId: String(formData.get("whatsappPhoneId") || "").trim(),
+        defaultTemplate: String(formData.get("whatsappTemplate") || "retorno_cliente_sumido").trim(),
+        tokenConfigured: Boolean(String(formData.get("whatsappPhoneId") || "").trim()),
+      },
+      pix: {
+        ...(state.integrations || {}).pix,
+        provider: String(formData.get("pixProvider") || "manual_pix"),
+        mode: String(formData.get("pixMode") || "sandbox"),
+        key: String(formData.get("pixKey") || "").trim(),
+        depositAmount: Number(formData.get("pixDepositAmount") || 15),
+      },
+    };
+    state.publicBooking = {
+      ...(state.publicBooking || {}),
+      enabled: Boolean(formData.get("publicBookingEnabled")),
+      slug: String(formData.get("publicBookingSlug") || "barbearia-alpha").trim(),
+    };
+
+    if (apiEnabled) {
+      const response = await apiFetch("/api/integrations", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(state.integrations),
+      }).catch(() => null);
+      if (response.ok) {
+        state.integrations = await response.json();
+      }
+    }
+    saveState();
+    renderAll();
+    showToast("Integrações salvas.");
+  });
+}
+
+const testWhatsApp = document.querySelector("#testWhatsApp");
+if (testWhatsApp) {
+  testWhatsApp.addEventListener("click", async () => {
+    const client = state.clients[0] || { phone: "559999900000", name: "cliente" };
+    const response = await apiFetch("/api/integrations/whatsapp/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to: client.phone, name: client.name }),
+    }).catch(() => null);
+    if (response.ok) {
+      const result = await response.json();
+      state.integrations.whatsapp.status = "teste_ok";
+      state.integrations.whatsapp.lastTestAt = new Date().toISOString();
+      await hydrateStateFromApi();
+      renderAll();
+      showToast(result.message || "Teste de WhatsApp executado.");
+      return;
+    }
+    showToast("Não foi possível testár WhatsApp agora.");
+  });
+}
+
+const testPix = document.querySelector("#testPix");
+if (testPix) {
+  testPix.addEventListener("click", async () => {
+    const amount = Number(document.querySelector("#pixDepositAmount").value || state.integrations.pix.depositAmount || 15);
+    const response = await apiFetch("/api/integrations/pix/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount }),
+    }).catch(() => null);
+    if (response.ok) {
+      const result = await response.json();
+      state.integrations.pix.status = "teste_ok";
+      state.integrations.pix.lastTestAt = new Date().toISOString();
+      await hydrateStateFromApi();
+      renderAll();
+      showToast(`Pix simulado: ${result.chargeId}.`);
+      return;
+    }
+    showToast("Não foi possível testár Pix agora.");
+  });
+}
+
+const barbershopForm = document.querySelector("#barbershopForm");
+if (barbershopForm) {
+  barbershopForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const barbershop = {
+      id: `shop-${Date.now().toString(36)}`,
+      name: String(formData.get("name") || "").trim(),
+      city: String(formData.get("city") || "").trim(),
+      plan: String(formData.get("plan") || "Profissional"),
+      monthlyPrice: Number(formData.get("monthlyPrice") || 197),
+      setupPrice: Number(formData.get("setupPrice") || 497),
+      active: true,
+    };
+    if (!barbershop.name) {
+      showToast("Informe o nomé da unidade.");
+      return;
+    }
+    if (apiEnabled) {
+      const response = await apiFetch("/api/barbershops", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(barbershop),
+      }).catch(() => null);
+      state.barbershops.unshift(response?.ok  ?await response.json() : barbershop);
+    } else {
+      state.barbershops.unshift(barbershop);
+    }
+    saveState();
+    event.currentTarget.reset();
+    renderAll();
+    showToast(`${barbershop.name} adicionada como unidade.`);
+  });
+}
+
+const userForm = document.querySelector("#userForm");
+if (userForm) {
+  userForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const user = {
+      id: `user-${Date.now().toString(36)}`,
+      name: String(formData.get("name") || "").trim(),
+      email: String(formData.get("email") || "").trim(),
+      role: String(formData.get("role") || "barber"),
+      barbershopId: state.currentBarbershopId,
+      active: true,
+    };
+    if (!user.name || !user.email) {
+      showToast("Informe nome e email do usuario.");
+      return;
+    }
+    if (apiEnabled) {
+      const response = await apiFetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...user, password: "demo123" }),
+      }).catch(() => null);
+      state.users.push(response?.ok  ?await response.json() : user);
+    } else {
+      state.users.push(user);
+    }
+    saveState();
+    event.currentTarget.reset();
+    renderAll();
+    showToast(`${user.name} adicionado com permissao ${user.role}.`);
+  });
+}
+
+const refreshAudit = document.querySelector("#refreshAudit");
+if (refreshAudit) {
+  refreshAudit.addEventListener("click", async () => {
+    const response = apiEnabled  ?await apiFetch("/api/audit-logs").catch(() => null) : null;
+    if (response?.ok) {
+      state.auditLogs = await response.json();
+    }
+    renderAudit();
+    showToast("Auditoria atualizada.");
+  });
+}
+
+document.querySelector("#serviceForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const formData = new FormData(event.currentTarget);
+  const service = {
+    id: `svc-${Date.now().toString(36)}`,
+    name: String(formData.get("name") || "").trim(),
+    price: Number(formData.get("price") || 0),
+    duration: Number(formData.get("duration") || 30),
+  };
+  if (!service.name) return;
+  state.services.push(service);
+  saveState();
+  event.currentTarget.reset();
+  renderAll();
+  showToast(`${service.name} adicionado aos serviços.`);
+});
+
+document.querySelector("#professionalForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const formData = new FormData(event.currentTarget);
+  const professional = {
+    id: `pro-${Date.now().toString(36)}`,
+    name: String(formData.get("name") || "").trim(),
+    commission: Number(formData.get("commission") || 0),
+    active: true,
+  };
+  if (!professional.name) return;
+  state.professionals.push(professional);
+  saveState();
+  event.currentTarget.reset();
+  renderAll();
+  showToast(`${professional.name} adicionado a equipe.`);
+});
+
+document.querySelector("#loginForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const formData = new FormData(event.currentTarget);
+  const email = String(formData.get("email") || "").trim();
+  const password = String(formData.get("password") || "");
+
+  if (!email || !password) {
+    showToast("Informe email e senha.");
+    return;
+  }
+
+  const response = await fetch("/api/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  }).catch(() => null);
+
+  if (!response?.ok) {
+    showToast("Não foi possível autenticar no backend.");
+    return;
+  }
+
+  const session = await response.json();
+  localStorage.setItem(authKey, JSON.stringify(session));
+  loginScreen.classList.add("hidden");
+
+  try {
+    await hydrateStateFromApi();
+    renderAll();
+  } catch (error) {
+    console.warn("Login concluído, mas a atualização visual encontrou um detalhe não bloqueante.", error);
+  }
+  showToast("Login realizado.");
+});
+
+async function initApp() {
+  await hydrateStateFromApi();
+  if (localStorage.getItem(authKey)) {
+    loginScreen.classList.add("hidden");
+  }
+  renderAll();
+}
+
+initApp();
+

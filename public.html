@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Business Barber | Agendamento</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="public-page">
+      <section class="public-hero">
+        <div>
+          <span class="eyebrow">Agendamento online</span>
+          <h1 id="publicShopName">Barbearia Alpha</h1>
+          <p id="publicHeadline">Agende seu corte sem perder horário.</p>
+        </div>
+        <div class="public-signal">
+          <strong>Pix opcional</strong>
+          <span>Sinal para proteger seu horário e reduzir faltas.</span>
+        </div>
+      </section>
+
+      <section class="public-booking-shell">
+        <form class="public-booking-form" id="publicBookingForm">
+          <div class="panel-header">
+            <div>
+              <span class="eyebrow">Novo horário</span>
+              <h2>Escolha serviço e profissional</h2>
+            </div>
+          </div>
+          <label class="field">
+            Nome
+            <input name="client" placeholder="Seu nome" required />
+          </label>
+          <label class="field">
+            WhatsApp
+            <input name="phone" placeholder="5599999999999" required />
+          </label>
+          <div class="roi-grid">
+            <label class="field">
+              Serviço
+              <select id="publicService" name="service" required"></select>
+            </label>
+            <label class="field">
+              Profissional
+              <select id="publicProfessional" name="barber" required"></select>
+            </label>
+          </div>
+          <div class="roi-grid">
+            <label class="field">
+              Data
+              <input id="publicDate" name="date" type="date" required />
+            </label>
+            <label class="field">
+              Horário
+              <select id="publicTime" name="time" required></select>
+            </label>
+          </div>
+          <label class="checkbox-row">
+            <input id="publicPixDeposit" name="pixDeposit" type="checkbox" checked />
+            Confirmar com sinal Pix
+          </label>
+          <button class="primary-button full" type="submit">Confirmar agendamento</button>
+          <p class="public-feedback" id="publicFeedback">Horários sujeitos à confirmação da equipe.</p>
+        </form>
+
+        <aside class="public-summary">
+          <span class="eyebrow">Como funciona</span>
+          <div class="mini-list">
+            <div><strong>1</strong><span>Você escolhe o serviço.</span></div>
+            <div><strong>2</strong><span>A equipe confirma no WhatsApp.</span></div>
+            <div><strong>3</strong><span>O sinal Pix segura o horário, se a barbearia exigir.</span></div>
+          </div>
+        </aside>
+      </section>
+    </main>
+    <script src="public-booking.js"></script>
+  </body>
+</html>
