@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Business Barber - Funcionamento para Barbearia e Cliente</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 18mm;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: #201719;
+        background: #f7f2ea;
+        font-family:
+          Inter,
+          Segoe UI,
+          Arial,
+          sans-serif;
+        line-height: 1.55;
+      }
+
+      .page {
+        max-width: 820px;
+        margin: 0 auto;
+        padding: 28px;
+        background: #fffdf9;
+      }
+
+      .cover {
+        padding: 34px;
+        border-radius: 8px;
+        color: #fffdf9;
+        background: linear-gradient(135deg, #111111, #2f3a43);
+      }
+
+      .eyebrow {
+        display: block;
+        color: #d8b06f;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 12px 0 10px;
+        font-size: 38px;
+        line-height: 1.05;
+        letter-spacing: 0;
+      }
+
+      h2 {
+        margin: 28px 0 10px;
+        color: #2f3a43;
+        font-size: 22px;
+        line-height: 1.2;
+      }
+
+      h3 {
+        margin: 20px 0 8px;
+        font-size: 17px;
+      }
+
+      p {
+        margin: 0 0 12px;
+      }
+
+      ul,
+      ol {
+        margin: 8px 0 16px 22px;
+        padding: 0;
+      }
+
+      li {
+        margin: 4px 0;
+      }
+
+      .card {
+        margin: 18px 0;
+        padding: 18px;
+        border: 1px solid #e4d7c3;
+        border-radius: 8px;
+        background: #fbf6ee;
+      }
+
+      .quote {
+        margin: 14px 0;
+        padding: 14px 16px;
+        border-left: 4px solid #a9824c;
+        background: #f7f2ea;
+        font-weight: 700;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin: 18px 0;
+      }
+
+      .grid article {
+        padding: 14px;
+        border: 1px solid #e4d7c3;
+        border-radius: 8px;
+        background: #fffdf9;
+      }
+
+      .grid strong {
+        display: block;
+        margin-bottom: 6px;
+        color: #2f3a43;
+      }
+
+      .footer {
+        margin-top: 34px;
+        padding-top: 14px;
+        border-top: 1px solid #e4d7c3;
+        color: #766a5d;
+        font-size: 12px;
+      }
+
+      code {
+        padding: 2px 5px;
+        border-radius: 4px;
+        background: #efe2cf;
+        font-family: Consolas, monospace;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="cover">
+        <span class="eyebrow">Business Barber</span>
+        <h1>Como o SaaS funciona para a barbearia e para o cliente</h1>
+        <p>
+          Uma explicacao simples do fluxo operacional: a barbearia usa o painel para recuperar agenda e receita; o
+          cliente final usa uma experiencia leve para agendar, confirmar e voltar.
+        </p>
+      </section>
+
+      <h2>Visao Geral</h2>
+      <p>A l?gica do Business Barber tem dois lados bem separados:</p>
+      <div class="grid">
+        <article>
+          <strong>1. Barbearia</strong>
+          <span>E quem paga e usa o painel interno para agenda, clientes, campanhas, relatorios e operação.</span>
+        </article>
+        <article>
+          <strong>2. Clienté da barbearia</strong>
+          <span>E quem agenda corte, recebe lembrete, campanha de retorno ou confirmacao pelo WhatsApp.</span>
+        </article>
+      </div>
+
+      <h2>Para a Barbearia</h2>
+      <p>
+        A barbearia entra no painel interno e usa o sistema como uma central de recuperacao de agenda, não apenas como
+        uma agenda comum.
+      </p>
+      <p>
+        O primeiro passó e a implantação. A barbearia cadastra ou importa os clientes, configura servicos, precos,
+        duracao, profissionais, horários e integracoes. Exemplo: Corte R$ 70, Barba R$ 45, Corte + barba R$ 110; equipe
+        com Rafa, Diego e Caio.
+      </p>
+      <p>Depois disso, o painel mostra a operação:</p>
+      <ul>
+        <li>horários ocupados;</li>
+        <li>horários vagos;</li>
+        <li>clientes sumidos;</li>
+        <li>campanhas enviadas;</li>
+        <li>receita recuperada;</li>
+        <li>taxa de resposta;</li>
+        <li>agendamentos gerados;</li>
+        <li>ROI da mensalidade.</li>
+      </ul>
+
+      <div class="card">
+        <strong>A pergunta central do produto</strong>
+        <p>O sistema tenta responder: onde tem dinheiro parado hoje</p>
+      </div>
+
+      <h3>Exemplo pratico</h3>
+      <p>
+        A barbearia tem um horario vago as 16:30. O sistema mostra esse buraco e permite buscar clientes com maior
+        chance de voltar, como alguem que cortava com frequencia, gastava bem e sumiu ha 45 ou 60 dias.
+      </p>
+      <p>A barbearia pode rodar uma campanha de reativacao:</p>
+      <div class="quote">
+        Oi, Lucas! Faz um tempo que voce não aparece. Hoje abriu um horario com o Rafa as 16:30. Quer reservar
+      </div>
+      <p>
+        No MVP, issó ainda pode ser simulado ou preparado para WhatsApp. Em producao, a mensagem sairia por WhatsApp
+        Cloud API, Z-API, Evolution API ou outro provedor.
+      </p>
+
+      <h3>Segmentacao</h3>
+      <p>A barbearia consegue filtrar clientes por criterios como:</p>
+      <ul>
+        <li>clientes ha mais de 45 dias sem voltar;</li>
+        <li>clientes com ticket maior que R$ 100;</li>
+        <li>clientes que fazem corte + barba;</li>
+        <li>clientes de um barbeiro especifico;</li>
+        <li>clientes com maior chance de retorno.</li>
+      </ul>
+      <p>
+        Cada campanha gera historico: enviados, respostas, agendamentos e receita estimada. Issó alimenta os relatorios
+        e ajuda a provar se o SaaS está se pagando.
+      </p>
+
+      <h3>O que a barbearia tem no painel</h3>
+      <ul>
+        <li>cadastro de clientes;</li>
+        <li>historico por cliente;</li>
+        <li>agenda editavel;</li>
+        <li>campanhas salvas;</li>
+        <li>lista de espera;</li>
+        <li>clube e planos recorrentes;</li>
+        <li>pagina publica de agendamento;</li>
+        <li>controle de unidades;</li>
+        <li>permissoes de dono, gerente e barbeiro;</li>
+        <li>auditoria de acoes;</li>
+        <li>exportacao e exclusao dé dados para LGPD.</li>
+      </ul>
+
+      <h2>Para o Clienté da Barbearia</h2>
+      <p>
+        O cliente final não entra no painel administrativo. Ele interage de forma simples, principalmente pelo link
+        p?blico e pelo WhatsApp.
+      </p>
+      <p>Ele pode receber um link p?blico, como:</p>
+      <p><code>http://localhost:4187/public.html?barbearia=barbearia-alpha</code></p>
+      <p>
+        Nessa pagina, ele ve a barbearia, escolhe servico, profissional, data, horario, informa nome e WhatsApp, e
+        confirma o agendamento.
+      </p>
+
+      <h3>Fluxo do cliente</h3>
+      <ol>
+        <li>Cliente abre o link.</li>
+        <li>Escolhe Corte, Barba ou Corte + barba.</li>
+        <li>Escolhe o profissional.</li>
+        <li>Escolhé data e horario.</li>
+        <li>Informa nome e WhatsApp.</li>
+        <li>Confirma o pedido de agendamento.</li>
+        <li>O agendamento entra no painel da barbearia.</li>
+        <li>A barbearia confirma pelo WhatsApp.</li>
+        <li>Se necessario, o cliente paga um sinal Pix para proteger o horario.</li>
+      </ol>
+
+      <h3>Pix e confirmacao</h3>
+      <p>
+        O Pix serve principalmente para reduzir falta e cancelamento em cima da hora. Exemplo: cliente novo ou horario
+        muito disputado pode precisar pagar R$ 15 de sinal. No MVP issó está simulado; em producao, pode integrar com
+        Mercado Pago, Asaas, Efi ou Pix manual.
+      </p>
+
+      <h3>Mensagens que o cliente pode receber</h3>
+      <ul>
+        <li>confirmacao de horario;</li>
+        <li>lembrete antes do corte;</li>
+        <li>convite para voltar;</li>
+        <li>avisó de horario vago;</li>
+        <li>oferta para cliente antigo;</li>
+        <li>campanha de clube ou assinatura.</li>
+      </ul>
+
+      <h2>Exemplo Completo</h2>
+      <p>Imagine que Marcos cortava cabelo e barba todo mês, mas sumiu ha 68 dias.</p>
+      <p>
+        A barbearia entra no painel e ve Marcos como cliente de alta intencao. O sistema mostra que ele costuma gastar
+        R$ 110 e prefere horario a noite.
+      </p>
+      <p>A barbearia seleciona Marcos em uma campanha de retorno e envia:</p>
+      <div class="quote">
+        Fala, Marcos! Abriu um horario hoje a noite para corte + barba. Quer que eu reserve pra voce
+      </div>
+      <p>Marcos responde que sim. A barbearia registra o agendamento.</p>
+      <p>O relatorio passa a mostrar:</p>
+      <ul>
+        <li>1 cliente recuperado;</li>
+        <li>R$ 110 de receita potencial;</li>
+        <li>campanha com resposta;</li>
+        <li>agendamento atribu?do ao Business Barber.</li>
+      </ul>
+      <p>
+        Ou seja: o SaaS não vende só agenda. Ele vende recuperacao de dinheiro que a barbearia ja estáva deixando
+        escapar.
+      </p>
+
+      <h2>Resumo Simples</h2>
+      <div class="card">
+        <p>
+          Para a barbearia, o sistema funciona como um painel de crescimento: agenda, clientes, campanhas, relatorios e
+          recuperacao de receita.
+        </p>
+        <p>
+          Para o clienté da barbearia, funciona como uma experiencia simples: receber mensagem, clicar no link, escolher
+          horario e confirmar o corte.
+        </p>
+        <p>
+          O ponto forte do produto e esse: a barbearia enxerga resultado financeiro, enquanto o cliente final só sente
+          praticidade.
+        </p>
+      </div>
+
+      <div class="footer">
+        Documento gerado para o projeto Business Barber. Usó sugerido: apresenta??o, alinhamento de produto e valida??o
+        com donos de barbearia.
+      </div>
+    </main>
+  </body>
+</html>
+
