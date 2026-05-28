@@ -756,7 +756,7 @@ const server = createServer(async (req, res) => {
 });
 
 await ensureDb();
-server.listen(port, "127.0.0.1", () => {
-  console.log(`Business Barber rodando em http://localhost:${port}`);
+server.listen(port, "0.0.0.0", () => {
+  console.log(`Business Barber rodando em http://0.0.0.0:${port}`);
 });
 
