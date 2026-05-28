@@ -12,7 +12,7 @@ const defaultState = {
   user: {
     id: "user-demo",
     name: "Dono Demo",
-    email: "demo@businessbarber.local",
+    email: "",
     role: "owner",
     barbershopId: "shop-alpha",
   },
@@ -35,7 +35,7 @@ const defaultState = {
     {
       id: "user-demo",
       name: "Dono Demo",
-      email: "demo@businessbarber.local",
+      email: "",
       role: "owner",
       barbershopId: "shop-alpha",
       active: true,
@@ -92,8 +92,8 @@ const defaultState = {
     whatsapp: {
       provider: "whatsapp_cloud_api",
       mode: "sandbox",
-      phoneNumberId: "",
       tokenConfigured: false,
+      phoneNumberIdConfigured: false,
       defaultTemplate: "retorno_cliente_sumido",
       status: "simulado",
       lastTestAt: "",
@@ -117,7 +117,7 @@ const defaultState = {
     { id: "clients", label: "Importar clientes", done: true },
     { id: "services", label: "Configurar serviços", done: true },
     { id: "professionals", label: "Cadastrar equipe", done: true },
-    { id: "integrations", label: "Testár WhatsApp e Pix", done: false },
+    { id: "integrations", label: "Ativar WhatsApp e Pix", done: false },
     { id: "campaign", label: "Rodar primeira campanha", done: true },
   ],
   auditLogs: [],
@@ -1106,7 +1106,8 @@ function renderMessageOutbox() {
                 <strong>${message.phone || "sem número cadastrado"}</strong>
               </div>
               <div class="campaign-actions">
-                ${message.link  ?`<a class="tiny-button as-link" href="${message.link}" target="_blank" rel="noreferrer" data-message-sent="${message.id}">WhatsApp</a>` : ""}
+                ${message.link  ?`<a class="tiny-button as-link" href="${message.link}" target="_blank" rel="noreferrer" data-message-sent="${message.id}">Abrir WhatsApp</a>` : ""}
+                ${message.clientId ? `<button class="tiny-button" data-cloud-send="${message.id}" type="button">Enviar Cloud API</button>` : ""}
                 <button class="tiny-button" data-copy-message="${message.id}" type="button">Copiar texto</button>
                 ${message.type === "slot_invite" && message.status !== "Agendado"  ?`<button class="tiny-button" data-invite-response="${message.id}" type="button">Respondeu</button><button class="tiny-button" data-invite-book="${message.id}" type="button">Agendar</button>` : ""}
               </div>
@@ -1130,6 +1131,35 @@ function renderMessageOutbox() {
       saveState();
       renderMessageOutbox();
       showToast("Mensagem copiada.");
+    });
+  });
+
+  document.querySelectorAll("[data-cloud-send]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const message = state.messageHistory.find((item) => item.id === button.dataset.cloudSend);
+      if (!message?.clientId) return;
+      const response = await apiFetch("/api/whatsapp/send-template", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId: message.clientId, variables: [message.client] }),
+      }).catch(() => null);
+      if (!response?.ok) {
+        const result = response ? await response.json().catch(() => ({})) : {};
+        showToast(result.error === "whatsapp_consent_required" ? "Registre o consentimento WhatsApp do cliente antes do envio." : "Envio não realizado. Confirme a configuração da Cloud API.");
+        return;
+      }
+      const result = await response.json();
+      message.status = result.simulated ? "Sandbox: pronto" : "Enviada via API";
+      if (!result.simulated) {
+        const campaign = state.campaigns.find((item) => item.id === message.campaignId);
+        if (campaign) {
+          campaign.sent = Number(campaign.sent || 0) + 1;
+          campaign.status = "Em envio";
+          await persistCampaign(campaign);
+        }
+      }
+      saveState(); renderAll();
+      showToast(result.simulated ? "Integração pronta; ative as credenciais da Meta para envio real." : "Mensagem enviada pela Cloud API.");
     });
   });
 
@@ -1375,8 +1405,7 @@ function renderIntegrations() {
   const fields = {
     whatsappProvider: whatsapp.provider || "whatsapp_cloud_api",
     whatsappMode: whatsapp.mode || "sandbox",
-    whatsappPhoneId: whatsapp.phoneNumberId || "",
-    whatsappTemplate: whatsapp.defaultTemplate || "retorno_cliente_sumido",
+        whatsappTemplate: whatsapp.defaultTemplate || "retorno_cliente_sumido",
     pixProvider: pix.provider || "manual_pix",
     pixMode: pix.mode || "sandbox",
     pixKey: pix.key || "",
@@ -1402,7 +1431,7 @@ function renderIntegrations() {
     <article class="integration-status-card">
       <strong>WhatsApp</strong>
       <span>Status: ${whatsapp.status || "simulado"}</span>
-      <small>${whatsapp.mode || "sandbox"} · template ${whatsapp.defaultTemplate || "padrão"}</small>
+      <small>${whatsapp.tokenConfigured ? "credenciais no servidor" : "configure no Render"} · template ${whatsapp.defaultTemplate || "padrão"}</small>
     </article>
     <article class="integration-status-card">
       <strong>Pix</strong>
@@ -1582,7 +1611,7 @@ function renderClientsAdmin() {
         <article class="client-admin-card">
           <div>
             <strong>${client.name}</strong>
-            <span>${client.phone || "sem WhatsApp"} · ${client.favoriteService || "serviço não informado"} · ${client.professional || "sem profissional"}</span>
+            <span>${client.phone || "sem WhatsApp"} · ${client.favoriteService || "serviço não informado"} · ${client.consentWhatsapp ? "WhatsApp autorizado" : "sem consentimento WhatsApp"}</span>
           </div>
           <span>${money.format(Number(client.ticket || 0))}</span>
           <div class="campaign-actions">
@@ -1679,7 +1708,7 @@ function renderReports() {
     ["Taxa de agendamento", `${bookingRate}%`, `${bookings}/${sent} contatos agendaram`],
     ["Horários preenchidos", String(recoveredSlots), `${openSlots} horários ainda vagos`],
     ["ROI sobre mensalidade", `${roi}x`, "Referência: R$ 197/mês"],
-    ["No-show evitado", money.format(Math.max(680, pixRevenue * 2)), "Estimativa por confirmação e sinal"],
+    ["Sinais confirmados", money.format(pixRevenue), "Valores registrados no sistema"],
   ];
   reportGrid.innerHTML = cards
     .map(([title, value, subtitle]) => `<article class="report-card"><span>${title}</span><strong>${value}</strong><span>${subtitle}</span></article>`)
@@ -1813,18 +1842,17 @@ document.querySelector("#sendCampaign").addEventListener("click", async () => {
   }
 
   const total = selected.reduce((sum, client) => sum + client.value, 0);
-  const estimatedRevenue = Math.round(total * 0.35);
-  state.recoveredRevenue += estimatedRevenue;
   const campaign = {
     id: `camp-${Date.now().toString(36)}`,
     name: document.querySelector("#campaignSegment").value,
     segment: document.querySelector("#campaignSegment").value,
-    sent: selected.length,
-    responses: Math.max(1, Math.round(selected.length * 0.45)),
-    bookings: Math.max(1, Math.round(selected.length * 0.28)),
-    revenue: estimatedRevenue,
+    sent: 0,
+    responses: 0,
+    bookings: 0,
+    revenue: 0,
+    potentialRevenue: total,
     recipients: selected.map((client) => client.name),
-    status: "Enviada",
+    status: "Preparada",
     createdAt: new Date().toISOString().slice(0, 10),
   };
   const template = document.querySelector("#campaignText").value;
@@ -1834,6 +1862,7 @@ document.querySelector("#sendCampaign").addEventListener("click", async () => {
     return {
       id: `msg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
       campaignId: campaign.id,
+      clientId: client.id || "",
       client: target.name,
       phone: client.phone || "",
       message,
@@ -1862,7 +1891,7 @@ document.querySelector("#sendCampaign").addEventListener("click", async () => {
   });
   saveState();
   renderAll();
-  showToast(`Campanha enviadá para ${selected.length} clientes. Potencial estimado: ${money.format(total)}.`);
+  showToast(`Campanha preparada para ${selected.length} clientes. Potencial mapeado: ${money.format(total)}. Envie somente para contatos autorizados.`);
 });
 
 document.querySelector("#saveCampaignDraft").addEventListener("click", () => {
@@ -2020,6 +2049,7 @@ document.querySelector("#clientForm").addEventListener("submit", async (event) =
     preferredPeriod: "Tarde",
     professional: "",
     status: "Ativo",
+    consentWhatsapp: Boolean(formData.get("consentWhatsapp")),
   };
 
   if (!client.name) {
@@ -2136,9 +2166,8 @@ if (integrationForm) {
         ...(state.integrations || {}).whatsapp,
         provider: String(formData.get("whatsappProvider") || "whatsapp_cloud_api"),
         mode: String(formData.get("whatsappMode") || "sandbox"),
-        phoneNumberId: String(formData.get("whatsappPhoneId") || "").trim(),
-        defaultTemplate: String(formData.get("whatsappTemplate") || "retorno_cliente_sumido").trim(),
-        tokenConfigured: Boolean(String(formData.get("whatsappPhoneId") || "").trim()),
+                defaultTemplate: String(formData.get("whatsappTemplate") || "retorno_cliente_sumido").trim(),
+        tokenConfigured: Boolean((state.integrations.whatsapp || {}).tokenConfigured),
       },
       pix: {
         ...(state.integrations || {}).pix,
@@ -2229,7 +2258,7 @@ if (barbershopForm) {
       active: true,
     };
     if (!barbershop.name) {
-      showToast("Informe o nomé da unidade.");
+      showToast("Informe o nome da unidade.");
       return;
     }
     if (apiEnabled) {
@@ -2263,14 +2292,14 @@ if (userForm) {
       active: true,
     };
     if (!user.name || !user.email) {
-      showToast("Informe nome e email do usuario.");
+      showToast("Informe nome e email do usuário.");
       return;
     }
     if (apiEnabled) {
       const response = await apiFetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...user, password: "demo123" }),
+        body: JSON.stringify({ ...user, password: String(formData.get("password") || "") }),
       }).catch(() => null);
       state.users.push(response?.ok  ?await response.json() : user);
     } else {
@@ -2279,7 +2308,7 @@ if (userForm) {
     saveState();
     event.currentTarget.reset();
     renderAll();
-    showToast(`${user.name} adicionado com permissao ${user.role}.`);
+    showToast(`${user.name} adicionado com permissão ${user.role}.`);
   });
 }
 

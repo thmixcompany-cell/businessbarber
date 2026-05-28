@@ -13,9 +13,10 @@
         <span class="eyebrow">Acesso restrito</span>
         <h1>Painel do fundador</h1>
         <p>Entre com o usuário administrador da plataforma.</p>
-        <label class="field">Email<input name="email" type="email" value="admin@businessbarber.local" required /></label>
-        <label class="field">Senha<input name="password" type="password" placeholder="Sua senha administrativa" required /></label>
+        <label class="field">Email<input name="email" type="email" placeholder="admin@seudominio.com" autocomplete="username" required /></label>
+        <label class="field">Senha<input name="password" type="password" placeholder="Sua senha administrativa" autocomplete="current-password" required /></label>
         <button class="primary-button full" type="submit">Entrar no admin</button>
+        <div class="login-links"><a href="/">Voltar ao site</a></div>
       </form>
     </section>
 
@@ -35,7 +36,7 @@
           <button class="nav-item" data-admin-view="pilot" type="button">Piloto</button>
           <button class="nav-item" data-admin-view="ops" type="button">Operação</button>
         </nav>
-        <a class="admin-return" href="/">Abrir painel da barbearia</a>
+        <a class="admin-return" href="/app.html">Abrir painel da barbearia</a>
       </aside>
 
       <main class="admin-main">
@@ -46,7 +47,7 @@
             <p>Use esta área para vender, acompanhar pilotos, simular propostas, monitorar clientes SaaS e preparar a operação.</p>
           </div>
           <div class="topbar-actions">
-            <a class="secondary-button" href="/deploy.md" target="_blank" rel="noreferrer">Deploy</a>
+            <a class="secondary-button" href="/">Ver site</a>
             <a class="primary-button" href="/public.html?barbearia=barbearia-alpha" target="_blank" rel="noreferrer">Ver página pública</a>
           </div>
         </header>

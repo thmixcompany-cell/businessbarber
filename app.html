@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Business Barber | SaaS para Barbearias</title>
+    <title>Business Barber | Painel da Barbearia</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -15,13 +15,14 @@
         <p>Entre para acompanhar a agenda, clientes, retornos e campanhas da barbearia.</p>
         <label class="field">
           Email
-          <input id="loginEmail" name="email" type="email" value="demo@businessbarber.local" required />
+          <input id="loginEmail" name="email" type="email" placeholder="seuemail@barbearia.com" autocomplete="username" required />
         </label>
         <label class="field">
           Senha
-          <input id="loginPassword" name="password" type="password" value="demo123" required />
+          <input id="loginPassword" name="password" type="password" placeholder="Sua senha" autocomplete="current-password" required />
         </label>
         <button class="primary-button full" type="submit">Entrar no painel</button>
+        <div class="login-links"><a href="/">Voltar ao site</a><a href="/privacidade.html">Privacidade</a></div>
       </form>
     </section>
 
@@ -42,15 +43,15 @@
           </button>
           <button class="nav-item" data-view="reactivation" type="button">
             <span class="nav-icon">↻</span>
-            Retornos
+            Clientes para recuperar
           </button>
           <button class="nav-item" data-view="waitlist" type="button">
             <span class="nav-icon">≡</span>
-            Lista de espera
+            Preencher horários
           </button>
           <button class="nav-item" data-view="club" type="button">
             <span class="nav-icon">★</span>
-            Fidelização
+            Clube e recorrência
           </button>
           <button class="nav-item" data-view="settings" type="button">
             <span class="nav-icon">⚙</span>
@@ -62,7 +63,7 @@
           </button>
           <button class="nav-item" data-view="reports" type="button">
             <span class="nav-icon">#</span>
-            Relatórios
+            Resultados
           </button>
         </nav>
 
@@ -117,9 +118,9 @@
             <small>sem voltar há 45+ dias</small>
           </article>
           <article class="metric">
-            <span>Faltas evitadas</span>
+            <span>Sinais confirmados</span>
             <strong id="noshowAvoided">R$ 680</strong>
-            <small>sinal Pix + confirmação</small>
+            <small>somente valores confirmados</small>
           </article>
         </section>
 
@@ -462,7 +463,7 @@
                 <section>
                   <div class="mini-section-header">
                     <strong>WhatsApp</strong>
-                    <span>Cloud API ou simulação</span>
+                    <span>Cloud API ativada no servidor</span>
                   </div>
                   <label class="field">
                     Provedor
@@ -480,10 +481,7 @@
                       <option value="production">Produção</option>
                     </select>
                   </label>
-                  <label class="field">
-                    Phone number ID
-                    <input id="whatsappPhoneId" name="whatsappPhoneId" placeholder="ID do numero" />
-                  </label>
+                  <p class="secure-config-note">Token e Phone Number ID são configurados com segurança no Render. Nunca cole tokens dentro do painel.</p>
                   <label class="field">
                     Template padrão
                     <input id="whatsappTemplate" name="whatsappTemplate" placeholder="retorno_cliente_sumido" />
@@ -549,16 +547,11 @@
             <div class="management-grid">
               <section>
                 <div class="mini-section-header">
-                  <strong>Barbearias</strong>
-                  <span>Multiunidade</span>
+                  <strong>Unidade ativa</strong>
+                  <span>Dados isolados por barbearia</span>
                 </div>
                 <div class="compact-list" id="barbershopList"></div>
-                <form class="compact-form tenant-form" id="barbershopForm">
-                  <input name="name" placeholder="Unidade" required />
-                  <input name="city" placeholder="Cidade" />
-                  <input name="monthlyPrice" min="0" type="number" value="197" />
-                  <button class="tiny-button" type="submit">Adicionar</button>
-                </form>
+                <p class="secure-config-note">Novas unidades são liberadas pelo suporte Business Barber para manter os dados separados e seguros.</p>
               </section>
               <section>
                 <div class="mini-section-header">
@@ -569,6 +562,7 @@
                 <form class="compact-form tenant-form" id="userForm">
                   <input name="name" placeholder="Nome" required />
                   <input name="email" placeholder="email@barbearia.com" type="email" required />
+                  <input name="password" placeholder="Senha temporária (10+ caracteres)" minlength="10" type="password" required />
                   <select name="role">
                     <option value="barber">Barbeiro</option>
                     <option value="manager">Gerente</option>
@@ -624,12 +618,16 @@
                 Serviço favorito
                 <input id="clientService" name="favoriteService" placeholder="Corte + barba" />
               </label>
+              <label class="checkbox-row consent-row">
+                <input name="consentWhatsapp" type="checkbox" />
+                Cliente autorizou contato de retorno pelo WhatsApp.
+              </label>
               <button class="primary-button full" type="submit">Salvar cliente</button>
             </form>
 
             <div class="import-box">
               <span class="eyebrow">Importar CSV</span>
-              <p>Cabeçalho aceito: nome, whatsapp, última_visita, serviço, ticket, profissional, período.</p>
+              <p>Cabeçalho aceito: nome, whatsapp, última_visita, serviço, ticket, profissional, período. Após importar, registre consentimento antes de campanhas via WhatsApp.</p>
               <textarea id="clientCsv" rows="7">nome,whatsapp,última_visita,serviço,ticket,profissional,período
 João Demo,559999900009,2026-04-10,Corte,70,Rafa,Tarde</textarea>
               <button class="secondary-button full" id="importClients" type="button">Importar clientes</button>
