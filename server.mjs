@@ -225,10 +225,20 @@ function assertSupabaseConfigured() {
   if (!supabaseUrl || !supabaseSecret) throw new Error("supabase_not_configured");
 }
 
+// New Supabase secret keys (sb_secret_...) are API keys, not JWT bearer tokens.
+// Legacy service_role JWT keys may still be sent as Bearer tokens for compatibility.
+function supabaseHeaders(extra = {}) {
+  const headers = { apikey: supabaseSecret, ...extra };
+  if (!supabaseSecret.startsWith("sb_secret_")) {
+    headers.Authorization = `Bearer ${supabaseSecret}`;
+  }
+  return headers;
+}
+
 async function readSupabaseState() {
   assertSupabaseConfigured();
   const response = await fetch(`${supabaseUrl}/rest/v1/bb_app_state?id=eq.${encodeURIComponent(supabaseStateId)}&select=payload`, {
-    headers: { apikey: supabaseSecret, Authorization: `Bearer ${supabaseSecret}` },
+    headers: supabaseHeaders(),
   });
   if (!response.ok) throw new Error(`supabase_read_failed_${response.status}`);
   const rows = await response.json();
@@ -245,12 +255,10 @@ async function writeSupabaseState(data) {
   assertSupabaseConfigured();
   const response = await fetch(`${supabaseUrl}/rest/v1/bb_app_state`, {
     method: "POST",
-    headers: {
-      apikey: supabaseSecret,
-      Authorization: `Bearer ${supabaseSecret}`,
+    headers: supabaseHeaders({
       "Content-Type": "application/json",
       Prefer: "resolution=merge-duplicates,return=minimal",
-    },
+    }),
     body: JSON.stringify({ id: supabaseStateId, payload: normalizeDb(data), updated_at: new Date().toISOString() }),
   });
   if (!response.ok) throw new Error(`supabase_write_failed_${response.status}`);
@@ -384,7 +392,15 @@ async function handleWebhook(req, res, url) {
 async function handleApi(req, res, url) {
   const { pathname, searchParams } = url;
   if (pathname === "/api/webhooks/whatsapp") return handleWebhook(req, res, url);
-  if (pathname === "/api/health") return sendJson(res, 200, { ok: true, storage: storageProvider, whatsappConfigured: Boolean(whatsappAccessToken && whatsappPhoneNumberId) });
+  if (pathname === "/api/health") {
+    try {
+      if (storageProvider === "supabase") await readSupabaseState();
+      return sendJson(res, 200, { ok: true, storage: storageProvider, databaseConnected: true, whatsappConfigured: Boolean(whatsappAccessToken && whatsappPhoneNumberId) });
+    } catch (error) {
+      console.error("Health check database error:", error.message);
+      return sendJson(res, 503, { ok: false, storage: storageProvider, databaseConnected: false, whatsappConfigured: Boolean(whatsappAccessToken && whatsappPhoneNumberId) });
+    }
+  }
   if (pathname.startsWith("/api/public/") && isRateLimited(req, "public", 25)) return sendJson(res, 429, { error: "rate_limited" });
   if (pathname === "/api/login" && isRateLimited(req, "login", 10)) return sendJson(res, 429, { error: "too_many_attempts" });
   const db = await readDb();
