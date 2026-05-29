@@ -752,17 +752,25 @@ function persistCampaign(campaign) {
 }
 
 function renderMetrics() {
-  document.querySelector("#recoveredRevenue").textContent = money.format(state.recoveredRevenue);
+  const setMetric = (selector, value) => {
+    const element = document.querySelector(selector);
+    if (element) element.textContent = value;
+  };
+
+  setMetric("#recoveredRevenue", money.format(state.recoveredRevenue));
   const dayOpenSlots = state.appointments.filter((item) => appointmentDate(item) === selectedScheduleDate() && item.open).length;
-  document.querySelector("#openSlotsCount").textContent = String(dayOpenSlots);
-  document.querySelector("#inactiveCount").textContent = String((state.inactiveClients || []).length);
-  document.querySelector("#noshowAvoided").textContent = money.format(680);
-  const contacts = state.prospects.length;
-  const demos = state.prospects.filter((prospect) => ["Demo marcada", "Piloto proposto", "Piloto pago"].includes(prospect.status)).length;
-  const pilots = state.prospects.filter((prospect) => prospect.status === "Piloto pago").length;
-  document.querySelector("#contactsMetric").textContent = `${contacts}/10`;
-  document.querySelector("#demosMetric").textContent = `${demos}/5`;
-  document.querySelector("#pilotsMetric").textContent = `${pilots}/3`;
+  setMetric("#openSlotsCount", String(dayOpenSlots));
+  setMetric("#inactiveCount", String((state.inactiveClients || []).length));
+  setMetric("#noshowAvoided", money.format(680));
+
+  // Estes indicadores existem apenas no painel do fundador.
+  // No painel da barbearia, não podem interromper o render das demais telas.
+  const contacts = (state.prospects || []).length;
+  const demos = (state.prospects || []).filter((prospect) => ["Demo marcada", "Piloto proposto", "Piloto pago"].includes(prospect.status)).length;
+  const pilots = (state.prospects || []).filter((prospect) => prospect.status === "Piloto pago").length;
+  setMetric("#contactsMetric", `${contacts}/10`);
+  setMetric("#demosMetric", `${demos}/5`);
+  setMetric("#pilotsMetric", `${pilots}/3`);
 }
 
 function renderSchedule() {
@@ -2036,48 +2044,89 @@ document.querySelector("#addClubPlan").addEventListener("click", () => {
 
 // Funções comerciais foram movidas para admin.html.
 
-document.querySelector("#clientForm").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const formData = new FormData(event.currentTarget);
-  const client = {
-    id: `client-${Date.now().toString(36)}`,
-    name: String(formData.get("name") || "").trim(),
-    phone: String(formData.get("phone") || "").trim(),
-    ticket: Number(formData.get("ticket") || 0),
-    lastVisit: String(formData.get("lastVisit") || ""),
-    favoriteService: String(formData.get("favoriteService") || "Corte"),
-    preferredPeriod: "Tarde",
-    professional: "",
-    status: "Ativo",
-    consentWhatsapp: Boolean(formData.get("consentWhatsapp")),
-  };
+const clientForm = document.querySelector("#clientForm");
+if (clientForm) {
+  clientForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = form.querySelector('button[type="submit"]');
+    const originalButtonText = button?.textContent || "Salvar cliente";
+    const formData = new FormData(form);
+    const client = {
+      name: String(formData.get("name") || "").trim(),
+      phone: String(formData.get("phone") || "").trim(),
+      ticket: Number(formData.get("ticket") || 0),
+      lastVisit: String(formData.get("lastVisit") || ""),
+      favoriteService: String(formData.get("favoriteService") || "Corte"),
+      preferredPeriod: "Tarde",
+      professional: "",
+      status: "Ativo",
+      consentWhatsapp: Boolean(formData.get("consentWhatsapp")),
+    };
 
-  if (!client.name) {
-    showToast("Informe o nome do cliente.");
-    return;
-  }
-
-  if (apiEnabled) {
-    const response = await apiFetch("/api/clients", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(client),
-    }).catch(() => null);
-    if (response.ok) {
-      state.clients.push(await response.json());
-    } else {
-      state.clients.push(client);
+    if (!client.name) {
+      showToast("Informe o nome do cliente.");
+      return;
     }
-  } else {
-    state.clients.push(client);
-  }
 
-  saveState();
-  event.currentTarget.reset();
-  document.querySelector("#clientTicket").value = "85";
-  renderAll();
-  showToast(`${client.name} salvo na base de clientes.`);
-});
+    if (!apiEnabled) {
+      showToast("O servidor não está sincronizado. Atualize a página e entre novamente.");
+      return;
+    }
+
+    try {
+      if (button) {
+        button.disabled = true;
+        button.textContent = "Salvando...";
+      }
+
+      const response = await apiFetch("/api/clients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(client),
+      });
+
+      let result = {};
+      try {
+        result = await response.json();
+      } catch (_) {
+        result = {};
+      }
+
+      if (response.status === 401) {
+        localStorage.removeItem(authKey);
+        showToast("Sua sessão expirou. Entre novamente para salvar.");
+        setTimeout(() => window.location.reload(), 1200);
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(result.error || `erro_http_${response.status}`);
+      }
+
+      state.clients = [result, ...(state.clients || []).filter((item) => item.id !== result.id)];
+      localStorage.setItem(storageKey, JSON.stringify(state));
+
+      form.reset();
+      const ticketField = document.querySelector("#clientTicket");
+      if (ticketField) ticketField.value = "85";
+
+      // Atualiza a tela sem sobrescrever novamente todo o estado recém-gravado.
+      renderClientsAdmin();
+      renderMetrics();
+      renderReports();
+      showToast(`${client.name} salvo com sucesso.`);
+    } catch (error) {
+      console.error("Falha ao salvar cliente:", error);
+      showToast(`Não foi possível salvar o cliente: ${error.message || "erro no servidor"}.`);
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = originalButtonText;
+      }
+    }
+  });
+}
 
 document.querySelector("#importClients").addEventListener("click", async () => {
   const csv = document.querySelector("#clientCsv").value.trim();
