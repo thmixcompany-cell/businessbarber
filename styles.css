@@ -3534,6 +3534,7 @@ body:has(.admin-shell) .admin-view.active {
 .hero-copy p { color:#bbb1a5; line-height:1.7; font-size:17px; max-width:560px; }
 .hero-actions { display:flex; gap:14px; margin-top:34px; }
 .hero-actions a { text-decoration:none; display:inline-flex; align-items:center; justify-content:center; padding:17px 25px; }
+.hero-action-note { max-width:520px; margin:14px 0 0; color:#9f968b; font-size:13px; line-height:1.55; }
 .trust-row { display:flex; gap:22px; flex-wrap:wrap; margin-top:34px; color:#aaa092; font-size:13px; }
 .hero-dashboard { border:1px solid rgba(222,179,111,.2); background:linear-gradient(145deg,#181a1b,#111213); border-radius:27px; padding:28px; box-shadow:0 35px 90px rgba(0,0,0,.42); }
 .preview-head { padding:8px 6px 28px; border-bottom:1px solid rgba(255,255,255,.08); }
@@ -3573,6 +3574,9 @@ body:has(.admin-shell) .admin-view.active {
 .secure-config-note { background:rgba(231,187,116,.08); border:1px solid rgba(231,187,116,.18); border-radius:12px; color:#c8bcaa; padding:13px 14px; font-size:13px; line-height:1.55; margin:14px 0; }
 .public-header { padding-bottom:10px; }
 .enhanced-public-page { max-width:1080px; padding-top:32px; }
+.public-explainer { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-bottom:18px; padding:16px 18px; border:1px solid rgba(222,179,111,.17); border-radius:18px; background:rgba(231,187,116,.08); color:#d8cdbd; }
+.public-explainer strong { color:#f3d49a; font-size:14px; }
+.public-explainer span { max-width:680px; color:#bfb3a4; font-size:13px; line-height:1.55; }
 .public-hero-premium { border:1px solid rgba(222,179,111,.17); background:linear-gradient(135deg,#191a1b,#111213); border-radius:25px; padding:34px; }
 .public-meta { display:flex; gap:12px; flex-wrap:wrap; margin-top:20px; }
 .public-meta span { font-size:13px; color:#c9bdad; border:1px solid rgba(255,255,255,.09); padding:9px 13px; border-radius:999px; }
@@ -3591,4 +3595,4 @@ body:has(.admin-shell) .admin-view.active {
 .legal-page h1 { font-size:40px; letter-spacing:-.04em; }
 .legal-page h2 { margin-top:32px; color:#ebbd76; font-size:20px; }
 .legal-page p, .legal-page li { color:#bcb2a6; line-height:1.75; }
-@media (max-width: 900px) { .marketing-nav { padding:20px; } .marketing-nav nav a:not(.nav-login) { display:none; } .marketing-main { padding:20px 20px 54px; } .marketing-hero, .results-section, .pilot-section { display:block; min-height:0; } .hero-dashboard, .pilot-card { margin-top:38px; } .benefit-grid, .service-showcase-grid { grid-template-columns:1fr; } .marketing-footer { flex-direction:column; padding:25px 20px; } .hero-copy h1 { font-size:39px; } }
+@media (max-width: 900px) { .marketing-nav { padding:20px; } .marketing-nav nav a:not(.nav-login) { display:none; } .marketing-main { padding:20px 20px 54px; } .marketing-hero, .results-section, .pilot-section { display:block; min-height:0; } .hero-actions, .public-explainer { flex-direction:column; align-items:stretch; } .hero-dashboard, .pilot-card { margin-top:38px; } .benefit-grid, .service-showcase-grid { grid-template-columns:1fr; } .marketing-footer { flex-direction:column; padding:25px 20px; } .hero-copy h1 { font-size:39px; } }
