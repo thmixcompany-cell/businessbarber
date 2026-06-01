@@ -527,10 +527,12 @@ function parseClientCsv(csv, shopId) {
 
 async function sendWhatsAppTemplate({ db, shopId, to, templateName, language, variables = [] }) {
   const config = whatsappInternalConfig(db, shopId);
+  const selectedTemplate = templateName || config.defaultTemplate || whatsappDefaultTemplate;
   const selectedLanguage = language || config.templateLanguage || whatsappTemplateLanguage;
   if (config.mode !== "production" || !config.accessToken || !config.phoneNumberId) return { simulated: true, status: "sandbox", messageId: null };
-  const components = variables.length ? [{ type: "body", parameters: variables.map((text) => ({ type: "text", text: String(text) })) }] : undefined;
-  const payload = { messaging_product: "whatsapp", to: normalizePhone(to), type: "template", template: { name: templateName || config.defaultTemplate || whatsappDefaultTemplate, language: { code: selectedLanguage }, ...(components ? { components } : {}) } };
+  const templateVariables = selectedTemplate === "hello_world" ? [] : variables;
+  const components = templateVariables.length ? [{ type: "body", parameters: templateVariables.map((text) => ({ type: "text", text: String(text) })) }] : undefined;
+  const payload = { messaging_product: "whatsapp", to: normalizePhone(to), type: "template", template: { name: selectedTemplate, language: { code: selectedLanguage }, ...(components ? { components } : {}) } };
   const response = await fetch(`https://graph.facebook.com/${graphVersion}/${config.phoneNumberId}/messages`, { method: "POST", headers: { Authorization: `Bearer ${config.accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(payload) });
   const result = await response.json().catch(() => ({}));
   if (!response.ok) { const error = new Error("whatsapp_send_failed"); error.details = result; throw error; }
