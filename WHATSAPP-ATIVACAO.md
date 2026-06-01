@@ -22,7 +22,7 @@
 2. No app da Meta, cadastre o webhook:
 
 ```text
-https://businessbarber.com/api/webhooks/whatsapp
+https://businessbarber.com.br/api/webhooks/whatsapp
 ```
 
 3. No painel da barbearia, acesse Ajustes > Integracoes e clique em `Conectar com Meta`.
@@ -49,7 +49,7 @@ O fluxo manual continua disponivel como fallback para apresentacao, suporte ou c
 7. No painel da Meta, configura o callback para:
 
 ```text
-https://businessbarber.com/api/webhooks/whatsapp
+https://businessbarber.com.br/api/webhooks/whatsapp
 ```
 
 Use o mesmo `Verify Token` cadastrado na barbearia.
