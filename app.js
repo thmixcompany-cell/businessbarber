@@ -1459,12 +1459,14 @@ function renderIntegrations() {
   const whatsappMetaState = whatsapp.embeddedSignupConfigured
     ? `Meta conectada${whatsapp.verifiedName ? ` · ${whatsapp.verifiedName}` : ""}`
     : (whatsapp.embeddedSignupReady ? "Meta pronta para conectar" : "Meta pendente no servidor");
+  const whatsappSecurityState = whatsapp.appSecretConfigured ? "webhook com assinatura" : "App Secret pendente";
+  const whatsappTemplateState = whatsapp.defaultTemplate ? `template ${whatsapp.defaultTemplate} (${whatsapp.templateLanguage || "pt_BR"})` : "template padrão";
 
   integrationStatus.innerHTML = `
     <article class="integration-status-card">
       <strong>WhatsApp</strong>
       <span>Status: ${whatsapp.status || "simulado"}</span>
-      <small>${whatsapp.tokenConfigured && whatsapp.phoneNumberIdConfigured ? `conectado (${whatsapp.credentialSource || "servidor"})` : "aguardando conexão"} · ${whatsappMetaState} · número ${whatsappConnection} · template ${whatsapp.defaultTemplate || "padrão"}</small>
+      <small>${whatsapp.tokenConfigured && whatsapp.phoneNumberIdConfigured ? `conectado (${whatsapp.credentialSource || "servidor"})` : "aguardando conexão"} · ${whatsappMetaState} · número ${whatsappConnection} · ${whatsappTemplateState} · ${whatsappSecurityState}</small>
     </article>
     <article class="integration-status-card">
       <strong>Pix</strong>

@@ -68,6 +68,7 @@ try {
   await fetchJson("/api/public/appointments", { method: "POST", body: JSON.stringify({ barbershopSlug: "barbearia-alpha", client: "Cliente Site", phone: "5566999999999", service: booking.services[0].name, barber: booking.professionals[0].name, date: bookingDate, time: bookingTime }) }, 400);
   await fetchJson("/api/public/appointments", { method: "POST", body: JSON.stringify({ barbershopSlug: "barbearia-alpha", client: "Cliente Site", phone: "5566999999999", service: booking.services[0].name, barber: booking.professionals[0].name, date: bookingDate, time: bookingTime, privacyAccepted: true, whatsappConsent: true }) });
   const protectedDb = await fetch(`${baseUrl}/data/db.json`); if (protectedDb.status !== 404) throw new Error("db_file_exposed");
+  const protectedServer = await fetch(`${baseUrl}/server.mjs`); if (protectedServer.status !== 404) throw new Error("server_file_exposed");
   const protectedTests = await fetch(`${baseUrl}/tests/smoke.mjs`); if (protectedTests.status !== 404) throw new Error("internal_test_exposed");
   for (const page of ["/", "/app.html", "/public.html?barbearia=barbearia-alpha", "/admin.html", "/privacidade.html", "/termos.html"]) { const res = await fetch(`${baseUrl}${page}`); if (!res.ok) throw new Error(`page_unavailable:${page}`); }
   await fetchJson(`/api/campaigns/${campaign.id}`, { method: "DELETE", headers: auth });
