@@ -27,6 +27,11 @@ const whatsappAppSecret = process.env.WHATSAPP_APP_SECRET || "";
 const whatsappMode = (process.env.WHATSAPP_MODE || "sandbox").toLowerCase();
 const whatsappDefaultTemplate = process.env.WHATSAPP_DEFAULT_TEMPLATE || "retorno_cliente_sumido";
 const whatsappTemplateLanguage = process.env.WHATSAPP_TEMPLATE_LANGUAGE || "pt_BR";
+const metaAppId = process.env.META_APP_ID || "";
+const metaAppSecret = process.env.META_APP_SECRET || whatsappAppSecret;
+const metaBusinessId = process.env.META_BUSINESS_ID || "";
+const metaSystemUserAccessToken = process.env.META_SYSTEM_USER_ACCESS_TOKEN || "";
+const metaEmbeddedSignupConfigId = process.env.META_EMBEDDED_SIGNUP_CONFIG_ID || "";
 
 const tenantCollections = [
   "clients", "professionals", "services", "campaigns", "inactiveClients", "appointments", "waitlist", "clubPlans", "messageHistory", "pixCharges",
@@ -78,7 +83,7 @@ function securityHeaders(extra = {}) {
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-    "Content-Security-Policy": "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'",
+    "Content-Security-Policy": "default-src 'self'; img-src 'self' data: https://www.facebook.com https://static.xx.fbcdn.net; style-src 'self'; script-src 'self' https://connect.facebook.net; connect-src 'self' https://graph.facebook.com https://www.facebook.com; frame-src https://www.facebook.com https://web.facebook.com; form-action 'self'; base-uri 'self'; frame-ancestors 'none'",
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
     ...extra,
   };
@@ -147,22 +152,78 @@ function replaceTenantCollection(db, name, shopId, items) {
   db[name] = [...(db[name] || []).filter((item) => !sameTenant(item, shopId)), ...(items || []).map((item) => withTenant(item, shopId))];
 }
 
+function maskSecret(value, visible = 4) {
+  const text = String(value || "");
+  if (!text) return "";
+  if (text.length <= visible * 2) return "*".repeat(text.length);
+  return `${text.slice(0, visible)}...${text.slice(-visible)}`;
+}
+
+function whatsappSourceFor(db, shopId) {
+  const fallback = db.integrations || {};
+  return (db.integrationsByShop || {})[shopId] || fallback;
+}
+
+function whatsappInternalConfig(db, shopId) {
+  const source = whatsappSourceFor(db, shopId);
+  const whatsapp = source.whatsapp || {};
+  const accessToken = whatsapp.accessToken || whatsappAccessToken;
+  const phoneNumberId = whatsapp.phoneNumberId || whatsappPhoneNumberId;
+  const appSecret = whatsapp.appSecret || whatsappAppSecret;
+  const verifyToken = whatsapp.verifyToken || whatsappVerifyToken;
+  return {
+    provider: "whatsapp_cloud_api",
+    mode: whatsapp.mode || whatsappMode,
+    defaultTemplate: whatsapp.defaultTemplate || whatsappDefaultTemplate,
+    templateLanguage: whatsapp.templateLanguage || whatsappTemplateLanguage,
+    businessAccountId: whatsapp.businessAccountId || whatsapp.wabaId || "",
+    wabaId: whatsapp.wabaId || whatsapp.businessAccountId || "",
+    displayPhoneNumber: whatsapp.displayPhoneNumber || "",
+    verifiedName: whatsapp.verifiedName || "",
+    embeddedSignupConnectedAt: whatsapp.embeddedSignupConnectedAt || "",
+    accessToken,
+    phoneNumberId,
+    appSecret,
+    verifyToken,
+    credentialSource: whatsapp.accessToken && whatsapp.phoneNumberId ? "barbershop" : (whatsappAccessToken && whatsappPhoneNumberId ? "server" : "none"),
+  };
+}
+
+function publicWhatsappConfig(db, shopId) {
+  const config = whatsappInternalConfig(db, shopId);
+  const source = whatsappSourceFor(db, shopId);
+  const publicStatus = source.whatsapp?.status || (Boolean(config.accessToken && config.phoneNumberId) ? "pronto_para_teste" : "aguardando_credenciais");
+  const embeddedSignupReady = Boolean(metaAppId && metaEmbeddedSignupConfigId && metaAppSecret);
+  return {
+    provider: config.provider,
+    mode: config.mode,
+    defaultTemplate: config.defaultTemplate,
+    templateLanguage: config.templateLanguage,
+    businessAccountIdConfigured: Boolean(config.businessAccountId),
+    wabaIdConfigured: Boolean(config.wabaId),
+    tokenConfigured: Boolean(config.accessToken),
+    phoneNumberIdConfigured: Boolean(config.phoneNumberId),
+    appSecretConfigured: Boolean(config.appSecret),
+    verifyTokenConfigured: Boolean(config.verifyToken),
+    phoneNumberIdMasked: maskSecret(config.phoneNumberId),
+    businessAccountIdMasked: maskSecret(config.businessAccountId),
+    wabaIdMasked: maskSecret(config.wabaId),
+    displayPhoneNumber: config.displayPhoneNumber,
+    verifiedName: config.verifiedName,
+    credentialSource: config.credentialSource,
+    status: publicStatus,
+    lastTestAt: source.whatsapp?.lastTestAt || "",
+    embeddedSignupReady,
+    embeddedSignupConfigured: Boolean(config.embeddedSignupConnectedAt),
+    connectedAt: config.embeddedSignupConnectedAt,
+  };
+}
+
 function integrationFor(db, shopId) {
   const fallback = db.integrations || {};
-  const source = (db.integrationsByShop || {})[shopId] || fallback;
+  const source = whatsappSourceFor(db, shopId);
   return {
-    whatsapp: {
-      provider: "whatsapp_cloud_api",
-      mode: whatsappMode,
-      defaultTemplate: whatsappDefaultTemplate,
-      templateLanguage: whatsappTemplateLanguage,
-      status: whatsappAccessToken && whatsappPhoneNumberId ? "pronto_para_teste" : "aguardando_credenciais",
-      tokenConfigured: Boolean(whatsappAccessToken),
-      phoneNumberIdConfigured: Boolean(whatsappPhoneNumberId),
-      ...(source.whatsapp || {}),
-      tokenConfigured: Boolean(whatsappAccessToken),
-      phoneNumberIdConfigured: Boolean(whatsappPhoneNumberId),
-    },
+    whatsapp: publicWhatsappConfig(db, shopId),
     pix: {
       provider: "manual_pix",
       mode: "manual",
@@ -295,6 +356,112 @@ function appointmentConflicts(left, right) {
 function normalizePhone(value) { return String(value || "").replace(/\D/g, "").slice(0, 15); }
 function validPhone(value) { const phone = normalizePhone(value); return phone.length >= 10 && phone.length <= 15; }
 function sanitizeText(value, max = 120) { return String(value || "").trim().replace(/[<>]/g, "").slice(0, max); }
+function sanitizeCredential(value, max = 5000) { return String(value || "").trim().slice(0, max); }
+function graphUrl(pathname, params = {}) {
+  const url = new URL(`https://graph.facebook.com/${graphVersion}${pathname}`);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && String(value) !== "") url.searchParams.set(key, String(value));
+  });
+  return url;
+}
+
+async function graphGet(pathname, token, params = {}) {
+  const response = await fetch(graphUrl(pathname, params), { headers: { Authorization: `Bearer ${token}` } });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error("meta_graph_get_failed");
+    error.status = response.status;
+    error.details = payload;
+    throw error;
+  }
+  return payload;
+}
+
+async function graphPost(pathname, token, params = {}) {
+  const response = await fetch(graphUrl(pathname, params), { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error("meta_graph_post_failed");
+    error.status = response.status;
+    error.details = payload;
+    throw error;
+  }
+  return payload;
+}
+
+function embeddedSignupPublicConfig() {
+  const enabled = Boolean(metaAppId && metaEmbeddedSignupConfigId && metaAppSecret);
+  return {
+    enabled,
+    appId: metaAppId,
+    configId: metaEmbeddedSignupConfigId,
+    graphVersion,
+    callbackUrl: `${appUrl.replace(/\/$/, "")}/api/webhooks/whatsapp`,
+    message: enabled
+      ? "Embedded Signup configurado. A barbearia pode conectar o WhatsApp pela Meta."
+      : "Configure META_APP_ID, META_APP_SECRET e META_EMBEDDED_SIGNUP_CONFIG_ID no servidor.",
+  };
+}
+
+async function exchangeEmbeddedSignupCode(code) {
+  const url = graphUrl("/oauth/access_token", {
+    client_id: metaAppId,
+    client_secret: metaAppSecret,
+    code,
+  });
+  const response = await fetch(url);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload.access_token) {
+    const error = new Error("meta_oauth_exchange_failed");
+    error.status = response.status;
+    error.details = payload;
+    throw error;
+  }
+  return payload.access_token;
+}
+
+async function resolveEmbeddedSignupAssets({ userAccessToken, wabaId, phoneNumberId, displayPhoneNumber, verifiedName }) {
+  let resolvedWabaId = sanitizeCredential(wabaId, 80);
+  let resolvedPhoneNumberId = sanitizeCredential(phoneNumberId, 80);
+  let phoneNumberDisplay = sanitizeText(displayPhoneNumber, 80);
+  let resolvedVerifiedName = sanitizeText(verifiedName, 120);
+
+  if (!resolvedWabaId && userAccessToken && metaSystemUserAccessToken) {
+    const debug = await graphGet("/debug_token", metaSystemUserAccessToken, { input_token: userAccessToken });
+    const targets = (debug.data?.granular_scopes || [])
+      .filter((scope) => scope.scope === "whatsapp_business_management")
+      .flatMap((scope) => scope.target_ids || []);
+    resolvedWabaId = String(targets[0] || "");
+  }
+
+  if (!resolvedWabaId && metaBusinessId && metaSystemUserAccessToken) {
+    const shared = await graphGet(`/${metaBusinessId}/client_whatsapp_business_accounts`, metaSystemUserAccessToken, { fields: "id,name,message_template_namespace,currency,timezone_id" });
+    resolvedWabaId = String(shared.data?.[0]?.id || "");
+  }
+
+  if (!resolvedPhoneNumberId && resolvedWabaId) {
+    const token = userAccessToken || metaSystemUserAccessToken;
+    if (token) {
+      const phones = await graphGet(`/${resolvedWabaId}/phone_numbers`, token, { fields: "id,display_phone_number,verified_name" });
+      const phone = phones.data?.[0] || {};
+      resolvedPhoneNumberId = String(phone.id || "");
+      phoneNumberDisplay = phone.display_phone_number || phoneNumberDisplay;
+      resolvedVerifiedName = phone.verified_name || resolvedVerifiedName;
+    }
+  }
+
+  return { wabaId: resolvedWabaId, phoneNumberId: resolvedPhoneNumberId, displayPhoneNumber: phoneNumberDisplay, verifiedName: resolvedVerifiedName };
+}
+
+async function subscribeEmbeddedSignupWaba(wabaId, accessToken) {
+  if (!wabaId || !accessToken) return { ok: false, skipped: true };
+  try {
+    await graphPost(`/${wabaId}/subscribed_apps`, accessToken);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, status: error.status || 500, details: error.details || {} };
+  }
+}
 
 function customerState(db, user) {
   const shopId = shopIdFor(user, db);
@@ -314,8 +481,14 @@ function customerState(db, user) {
   };
 }
 
+function publicIntegrationsByShop(db) {
+  return Object.fromEntries(
+    Object.keys(db.integrationsByShop || {}).map((shopId) => [shopId, integrationFor(db, shopId)]),
+  );
+}
+
 function adminState(db) {
-  return { ...db, users: db.users.map(publicUser), integrations: undefined };
+  return { ...db, users: db.users.map(publicUser), integrations: undefined, integrationsByShop: publicIntegrationsByShop(db) };
 }
 
 function getPublicShop(db, slug) {
@@ -352,21 +525,45 @@ function parseClientCsv(csv, shopId) {
   });
 }
 
-async function sendWhatsAppTemplate({ to, templateName, language = whatsappTemplateLanguage, variables = [] }) {
-  if (whatsappMode !== "production" || !whatsappAccessToken || !whatsappPhoneNumberId) return { simulated: true, status: "sandbox", messageId: null };
+async function sendWhatsAppTemplate({ db, shopId, to, templateName, language, variables = [] }) {
+  const config = whatsappInternalConfig(db, shopId);
+  const selectedLanguage = language || config.templateLanguage || whatsappTemplateLanguage;
+  if (config.mode !== "production" || !config.accessToken || !config.phoneNumberId) return { simulated: true, status: "sandbox", messageId: null };
   const components = variables.length ? [{ type: "body", parameters: variables.map((text) => ({ type: "text", text: String(text) })) }] : undefined;
-  const payload = { messaging_product: "whatsapp", to: normalizePhone(to), type: "template", template: { name: templateName || whatsappDefaultTemplate, language: { code: language }, ...(components ? { components } : {}) } };
-  const response = await fetch(`https://graph.facebook.com/${graphVersion}/${whatsappPhoneNumberId}/messages`, { method: "POST", headers: { Authorization: `Bearer ${whatsappAccessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+  const payload = { messaging_product: "whatsapp", to: normalizePhone(to), type: "template", template: { name: templateName || config.defaultTemplate || whatsappDefaultTemplate, language: { code: selectedLanguage }, ...(components ? { components } : {}) } };
+  const response = await fetch(`https://graph.facebook.com/${graphVersion}/${config.phoneNumberId}/messages`, { method: "POST", headers: { Authorization: `Bearer ${config.accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(payload) });
   const result = await response.json().catch(() => ({}));
   if (!response.ok) { const error = new Error("whatsapp_send_failed"); error.details = result; throw error; }
   return { simulated: false, status: "sent", messageId: result.messages?.[0]?.id || null };
 }
 
-function verifyWhatsAppSignature(req, rawBody) {
-  if (!whatsappAppSecret) return true;
+function verifyWhatsAppSignatureWithSecret(req, rawBody, appSecret) {
+  if (!appSecret) return false;
   const signature = String(req.headers["x-hub-signature-256"] || "");
-  const expected = `sha256=${createHmac("sha256", whatsappAppSecret).update(rawBody).digest("hex")}`;
+  const expected = `sha256=${createHmac("sha256", appSecret).update(rawBody).digest("hex")}`;
   return safeCompare(signature, expected);
+}
+
+function whatsappAppSecrets(db) {
+  return [
+    whatsappAppSecret,
+    ...Object.values(db.integrationsByShop || {}).map((item) => item?.whatsapp?.appSecret),
+  ].filter(Boolean);
+}
+
+function verifyWhatsAppSignature(req, rawBody, db) {
+  const secrets = whatsappAppSecrets(db);
+  if (!secrets.length) return true;
+  return secrets.some((secret) => verifyWhatsAppSignatureWithSecret(req, rawBody, secret));
+}
+
+function findShopIdByWhatsAppPhoneNumberId(db, phoneNumberId) {
+  const target = String(phoneNumberId || "");
+  if (!target) return null;
+  for (const [shopId, integration] of Object.entries(db.integrationsByShop || {})) {
+    if (String(integration?.whatsapp?.phoneNumberId || "") === target) return shopId;
+  }
+  return whatsappPhoneNumberId && target === whatsappPhoneNumberId ? db.currentBarbershopId : null;
 }
 
 async function handleWebhook(req, res, url) {
@@ -374,17 +571,27 @@ async function handleWebhook(req, res, url) {
     const mode = url.searchParams.get("hub.mode");
     const token = url.searchParams.get("hub.verify_token");
     const challenge = url.searchParams.get("hub.challenge");
-    if (mode === "subscribe" && whatsappVerifyToken && safeCompare(token || "", whatsappVerifyToken)) return sendText(res, 200, challenge || "");
+    const db = await readDb();
+    const verifyTokens = [
+      whatsappVerifyToken,
+      ...Object.values(db.integrationsByShop || {}).map((item) => item?.whatsapp?.verifyToken),
+    ].filter(Boolean);
+    if (mode === "subscribe" && verifyTokens.some((item) => safeCompare(token || "", item))) return sendText(res, 200, challenge || "");
     return sendText(res, 403, "Verification failed");
   }
   if (req.method !== "POST") return sendJson(res, 405, { error: "method_not_allowed" });
   const chunks = [];
   for await (const chunk of req) chunks.push(chunk);
   const rawBody = Buffer.concat(chunks).toString("utf8");
-  if (!verifyWhatsAppSignature(req, rawBody)) return sendJson(res, 401, { error: "invalid_signature" });
-  const body = JSON.parse(rawBody || "{}");
   const db = await readDb();
-  addAudit(db, "whatsapp.webhook_received", "meta", { entries: Array.isArray(body.entry) ? body.entry.length : 0 }, null);
+  if (!verifyWhatsAppSignature(req, rawBody, db)) return sendJson(res, 401, { error: "invalid_signature" });
+  const body = JSON.parse(rawBody || "{}");
+  const phoneNumberIds = (body.entry || [])
+    .flatMap((entry) => entry.changes || [])
+    .map((change) => change?.value?.metadata?.phone_number_id)
+    .filter(Boolean);
+  const shopId = phoneNumberIds.map((id) => findShopIdByWhatsAppPhoneNumberId(db, id)).find(Boolean) || null;
+  addAudit(db, "whatsapp.webhook_received", "meta", { entries: Array.isArray(body.entry) ? body.entry.length : 0, phoneNumberIds }, shopId);
   await writeDb(db);
   return sendJson(res, 200, { received: true });
 }
@@ -530,19 +737,118 @@ async function handleApi(req, res, url) {
   if (pathname.startsWith("/api/campaigns/") && req.method === "DELETE") { const id = pathname.split("/").pop(); db.campaigns = db.campaigns.filter((item) => !(sameTenant(item, shopId) && item.id === id)); addAudit(db, "campaign.deleted", actor, { id }, shopId); await writeDb(db); return sendJson(res, 200, { ok: true }); }
 
   if (pathname === "/api/integrations" && req.method === "GET") return sendJson(res, 200, integrationFor(db, shopId));
+  if (pathname === "/api/integrations/whatsapp/embedded-config" && req.method === "GET") {
+    if (!canManageSettings(user)) return sendJson(res, 403, { error: "owner_required" });
+    return sendJson(res, 200, embeddedSignupPublicConfig());
+  }
+  if (pathname === "/api/integrations/whatsapp/embedded-complete" && req.method === "POST") {
+    if (!canManageSettings(user)) return sendJson(res, 403, { error: "owner_required" });
+    const config = embeddedSignupPublicConfig();
+    if (!config.enabled) return sendJson(res, 400, { error: "embedded_signup_not_configured", message: config.message });
+
+    const body = await readBody(req);
+    const signup = body.signup && typeof body.signup === "object" ? body.signup : {};
+    const code = sanitizeCredential(body.code, 2000);
+    if (!code) return sendJson(res, 400, { error: "authorization_code_required" });
+
+    let userAccessToken = "";
+    try {
+      userAccessToken = await exchangeEmbeddedSignupCode(code);
+    } catch (error) {
+      addAudit(db, "integration.whatsapp_embedded_failed", actor, { step: "oauth_exchange", status: error.status || 500 }, shopId);
+      return sendJson(res, 502, { error: "meta_oauth_exchange_failed", message: "A Meta não liberou o token da conexão. Revise o App ID, App Secret e configuração do Embedded Signup." });
+    }
+
+    const requestedWabaId = body.wabaId || body.businessAccountId || signup.waba_id || signup.whatsapp_business_account_id || signup.business_id;
+    const requestedPhoneNumberId = body.phoneNumberId || signup.phone_number_id;
+    let resolved;
+    try {
+      resolved = await resolveEmbeddedSignupAssets({
+        userAccessToken,
+        wabaId: requestedWabaId,
+        phoneNumberId: requestedPhoneNumberId,
+        displayPhoneNumber: body.displayPhoneNumber || signup.display_phone_number,
+        verifiedName: body.verifiedName || signup.verified_name,
+      });
+    } catch (error) {
+      addAudit(db, "integration.whatsapp_embedded_failed", actor, { step: "asset_resolution", status: error.status || 500 }, shopId);
+      return sendJson(res, 502, { error: "whatsapp_assets_not_found", message: "Não consegui localizar o número conectado na conta WhatsApp Business. Confirme se a conta e o número foram selecionados no fluxo da Meta." });
+    }
+
+    if (!resolved.phoneNumberId) return sendJson(res, 422, { error: "phone_number_id_required", message: "A Meta conectou a conta, mas não retornou um Phone Number ID." });
+    const subscription = await subscribeEmbeddedSignupWaba(resolved.wabaId, userAccessToken || metaSystemUserAccessToken);
+    const source = whatsappSourceFor(db, shopId);
+    const previous = source.whatsapp || {};
+    db.integrationsByShop[shopId] = {
+      ...source,
+      whatsapp: {
+        ...previous,
+        accessToken: userAccessToken,
+        phoneNumberId: resolved.phoneNumberId,
+        businessAccountId: resolved.wabaId || previous.businessAccountId || "",
+        wabaId: resolved.wabaId || previous.wabaId || "",
+        displayPhoneNumber: resolved.displayPhoneNumber || previous.displayPhoneNumber || "",
+        verifiedName: resolved.verifiedName || previous.verifiedName || "",
+        appSecret: previous.appSecret || metaAppSecret,
+        verifyToken: previous.verifyToken || whatsappVerifyToken,
+        provider: "whatsapp_cloud_api",
+        mode: "production",
+        defaultTemplate: previous.defaultTemplate || whatsappDefaultTemplate,
+        templateLanguage: previous.templateLanguage || whatsappTemplateLanguage,
+        status: "conectado_meta",
+        embeddedSignupConnectedAt: new Date().toISOString(),
+        lastTestAt: previous.lastTestAt || "",
+      },
+      pix: source.pix || integrationFor(db, shopId).pix,
+    };
+    addAudit(db, "integration.whatsapp_embedded_connected", actor, { wabaId: maskSecret(resolved.wabaId), phoneNumberId: maskSecret(resolved.phoneNumberId), subscription }, shopId);
+    await writeDb(db);
+    return sendJson(res, 200, integrationFor(db, shopId));
+  }
   if (pathname === "/api/integrations" && req.method === "PUT") {
     if (!canManageSettings(user)) return sendJson(res, 403, { error: "owner_required" });
-    const body = await readBody(req); const current = integrationFor(db, shopId);
-    db.integrationsByShop[shopId] = { whatsapp: { ...current.whatsapp, provider: "whatsapp_cloud_api", defaultTemplate: sanitizeText(body.whatsapp?.defaultTemplate || current.whatsapp.defaultTemplate), templateLanguage: body.whatsapp?.templateLanguage || current.whatsapp.templateLanguage }, pix: { ...current.pix, provider: body.pix?.provider || current.pix.provider, mode: body.pix?.mode || current.pix.mode, key: sanitizeText(body.pix?.key || current.pix.key, 120), depositAmount: Number(body.pix?.depositAmount || current.pix.depositAmount) } };
+    const body = await readBody(req);
+    const source = whatsappSourceFor(db, shopId);
+    const currentPublic = integrationFor(db, shopId);
+    const currentPrivate = source.whatsapp || {};
+    const incomingWhatsapp = body.whatsapp || {};
+    const nextWhatsapp = incomingWhatsapp.clearCredentials
+      ? {}
+      : {
+          accessToken: currentPrivate.accessToken || "",
+          phoneNumberId: currentPrivate.phoneNumberId || "",
+          appSecret: currentPrivate.appSecret || "",
+          verifyToken: currentPrivate.verifyToken || "",
+          businessAccountId: currentPrivate.businessAccountId || "",
+          wabaId: currentPrivate.wabaId || "",
+          displayPhoneNumber: currentPrivate.displayPhoneNumber || "",
+          verifiedName: currentPrivate.verifiedName || "",
+          embeddedSignupConnectedAt: currentPrivate.embeddedSignupConnectedAt || "",
+        };
+    for (const key of ["accessToken", "phoneNumberId", "appSecret", "verifyToken", "businessAccountId"]) {
+      if (incomingWhatsapp[key] !== undefined && String(incomingWhatsapp[key]).trim()) nextWhatsapp[key] = sanitizeCredential(incomingWhatsapp[key]);
+    }
+    db.integrationsByShop[shopId] = {
+      whatsapp: {
+        ...nextWhatsapp,
+        provider: "whatsapp_cloud_api",
+        mode: incomingWhatsapp.mode || currentPrivate.mode || currentPublic.whatsapp.mode,
+        defaultTemplate: sanitizeText(incomingWhatsapp.defaultTemplate || currentPrivate.defaultTemplate || currentPublic.whatsapp.defaultTemplate),
+        templateLanguage: sanitizeText(incomingWhatsapp.templateLanguage || currentPrivate.templateLanguage || currentPublic.whatsapp.templateLanguage, 20),
+        status: currentPrivate.status || currentPublic.whatsapp.status,
+        lastTestAt: currentPrivate.lastTestAt || "",
+      },
+      pix: { ...currentPublic.pix, provider: body.pix?.provider || currentPublic.pix.provider, mode: body.pix?.mode || currentPublic.pix.mode, key: sanitizeText(body.pix?.key || currentPublic.pix.key, 120), depositAmount: Number(body.pix?.depositAmount || currentPublic.pix.depositAmount) },
+    };
     addAudit(db, "integration.updated", actor, { whatsapp: true, pix: true }, shopId); await writeDb(db); return sendJson(res, 200, integrationFor(db, shopId));
   }
   if (pathname === "/api/integrations/whatsapp/test" && req.method === "POST") {
     if (!canManageSettings(user)) return sendJson(res, 403, { error: "owner_required" }); const body = await readBody(req); if (!validPhone(body.to)) return sendJson(res, 400, { error: "valid_phone_required" });
-    try { const result = await sendWhatsAppTemplate({ to: body.to, templateName: integrationFor(db, shopId).whatsapp.defaultTemplate, variables: [sanitizeText(body.name || "Cliente")] }); db.integrationsByShop[shopId] = { ...integrationFor(db, shopId), whatsapp: { ...integrationFor(db, shopId).whatsapp, status: result.simulated ? "sandbox_pronto" : "mensagem_enviada", lastTestAt: new Date().toISOString() } }; addAudit(db, "integration.whatsapp_tested", actor, { simulated: result.simulated, messageId: result.messageId }, shopId); await writeDb(db); return sendJson(res, 200, { ok: true, simulated: result.simulated, message: result.simulated ? "Estrutura pronta. Configure as credenciais Meta no Render para enviar de verdade." : "Mensagem enviada pela WhatsApp Cloud API." }); } catch (error) { return sendJson(res, 502, { error: "whatsapp_send_failed", message: "A Meta recusou o envio. Verifique token, número e template aprovado." }); }
+    try { const result = await sendWhatsAppTemplate({ db, shopId, to: body.to, templateName: integrationFor(db, shopId).whatsapp.defaultTemplate, variables: [sanitizeText(body.name || "Cliente")] }); const source = whatsappSourceFor(db, shopId); db.integrationsByShop[shopId] = { ...source, whatsapp: { ...(source.whatsapp || {}), status: result.simulated ? "sandbox_pronto" : "mensagem_enviada", lastTestAt: new Date().toISOString() } }; addAudit(db, "integration.whatsapp_tested", actor, { simulated: result.simulated, messageId: result.messageId }, shopId); await writeDb(db); return sendJson(res, 200, { ok: true, simulated: result.simulated, message: result.simulated ? "Estrutura pronta. Configure as credenciais Meta da barbearia para enviar de verdade." : "Mensagem enviada pela WhatsApp Cloud API da barbearia." }); } catch (error) { return sendJson(res, 502, { error: "whatsapp_send_failed", message: "A Meta recusou o envio. Verifique token, numero e template aprovado." }); }
   }
   if (pathname === "/api/whatsapp/send-template" && req.method === "POST") {
     const body = await readBody(req); const client = scope(db.clients, shopId).find((item) => item.id === body.clientId); if (!client) return sendJson(res, 404, { error: "client_not_found" }); if (!client.consentWhatsapp) return sendJson(res, 409, { error: "whatsapp_consent_required" });
-    try { const result = await sendWhatsAppTemplate({ to: client.phone, templateName: body.templateName || whatsappDefaultTemplate, variables: Array.isArray(body.variables) ? body.variables : [client.name] }); db.messageHistory.push(withTenant({ id: makeId("msg"), clientId: client.id, client: client.name, status: result.simulated ? "simulado" : "enviado", providerMessageId: result.messageId, at: new Date().toISOString() }, shopId)); addAudit(db, "whatsapp.template_sent", actor, { clientId: client.id, simulated: result.simulated }, shopId); await writeDb(db); return sendJson(res, 200, result); } catch { return sendJson(res, 502, { error: "whatsapp_send_failed" }); }
+    try { const result = await sendWhatsAppTemplate({ db, shopId, to: client.phone, templateName: body.templateName || integrationFor(db, shopId).whatsapp.defaultTemplate, variables: Array.isArray(body.variables) ? body.variables : [client.name] }); db.messageHistory.push(withTenant({ id: makeId("msg"), clientId: client.id, client: client.name, status: result.simulated ? "simulado" : "enviado", providerMessageId: result.messageId, at: new Date().toISOString() }, shopId)); addAudit(db, "whatsapp.template_sent", actor, { clientId: client.id, simulated: result.simulated }, shopId); await writeDb(db); return sendJson(res, 200, result); } catch { return sendJson(res, 502, { error: "whatsapp_send_failed" }); }
   }
   if (pathname === "/api/integrations/pix/test" && req.method === "POST") return sendJson(res, 200, { ok: true, simulated: true, message: "Pix permanece em modo manual até configurar um provedor homologado." });
   if (pathname === "/api/audit-logs" && req.method === "GET") return sendJson(res, 200, isPlatformAdmin(user) ? db.auditLogs : db.auditLogs.filter((log) => log.barbershopId === shopId));

@@ -10,7 +10,7 @@ DEMO_EMAIL=demo@businessbarber.local
 DEMO_PASSWORD=CrieUmaSenhaForteAqui
 ADMIN_EMAIL=seu-email-administrativo@dominio.com
 ADMIN_PASSWORD=CrieOutraSenhaForteAqui
-APP_URL=https://businessbarber.com.br
+APP_URL=https://businessbarber.com
 STORAGE_PROVIDER=json
 ```
 
@@ -28,7 +28,7 @@ OWNER_PASSWORD=SENHA_INICIAL_FORTE
 OWNER_NAME=NOME_DO_DONO
 OWNER_BARBERSHOP_ID=shop-alpha
 DEMO_MODE=false
-APP_URL=https://businessbarber.com.br
+APP_URL=https://businessbarber.com
 ```
 
 ## WhatsApp

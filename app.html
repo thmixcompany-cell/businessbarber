@@ -9,7 +9,7 @@
   <body>
     <section class="login-screen" id="loginScreen" aria-label="Login">
       <form class="login-card" id="loginForm">
-        <div class="brand-mark"><img src="assets/business-barber-logo.svg" alt="Business Barber" /></div>
+        <div class="brand-mark"><img src="assets/business-barber-logo.png" alt="Business Barber" /></div>
         <span class="eyebrow">Acesso da barbearia</span>
         <h1>Business Barber</h1>
         <p>Entre para acompanhar a agenda, clientes, retornos e campanhas da barbearia.</p>
@@ -29,7 +29,7 @@
     <div class="app-shell" id="appShell" hidden>
       <aside class="sidebar" aria-label="Navegação principal">
         <div class="brand">
-          <div class="brand-mark"><img src="assets/business-barber-logo.svg" alt="Business Barber" /></div>
+          <div class="brand-mark"><img src="assets/business-barber-logo.png" alt="Business Barber" /></div>
           <div>
             <strong>Business Barber</strong>
             <span>Painel da barbearia</span>
@@ -454,6 +454,7 @@
                 <h2>Integrações</h2>
               </div>
               <div class="panel-actions">
+                <button class="secondary-button" id="connectWhatsAppMeta" type="button">Conectar com Meta</button>
                 <button class="secondary-button" id="testWhatsApp" type="button">Testar WhatsApp</button>
                 <button class="secondary-button" id="testPix" type="button">Testar Pix</button>
               </div>
@@ -463,7 +464,7 @@
                 <section>
                   <div class="mini-section-header">
                     <strong>WhatsApp</strong>
-                    <span>Cloud API ativada no servidor</span>
+                    <span>Cloud API por barbearia</span>
                   </div>
                   <label class="field">
                     Provedor
@@ -481,10 +482,38 @@
                       <option value="production">Produção</option>
                     </select>
                   </label>
-                  <p class="secure-config-note">Token e Phone Number ID são configurados com segurança no Render. Nunca cole tokens dentro do painel.</p>
+                  <p class="secure-config-note">As credenciais ficam salvas somente no servidor. O painel mostra apenas status e máscara dos IDs.</p>
                   <label class="field">
                     Template padrão
                     <input id="whatsappTemplate" name="whatsappTemplate" placeholder="retorno_cliente_sumido" />
+                  </label>
+                  <label class="field">
+                    Idioma do template
+                    <input id="whatsappTemplateLanguage" name="whatsappTemplateLanguage" placeholder="pt_BR" />
+                  </label>
+                  <label class="field">
+                    WhatsApp Business Account ID
+                    <input id="whatsappBusinessAccountId" name="whatsappBusinessAccountId" autocomplete="off" placeholder="Opcional" />
+                  </label>
+                  <label class="field">
+                    Phone Number ID
+                    <input id="whatsappPhoneNumberId" name="whatsappPhoneNumberId" autocomplete="off" placeholder="Cole para conectar ou deixe vazio para manter" />
+                  </label>
+                  <label class="field">
+                    Access Token permanente
+                    <input id="whatsappAccessToken" name="whatsappAccessToken" type="password" autocomplete="new-password" placeholder="Cole para conectar ou deixe vazio para manter" />
+                  </label>
+                  <label class="field">
+                    App Secret
+                    <input id="whatsappAppSecret" name="whatsappAppSecret" type="password" autocomplete="new-password" placeholder="Usado para validar webhooks" />
+                  </label>
+                  <label class="field">
+                    Verify Token
+                    <input id="whatsappVerifyToken" name="whatsappVerifyToken" type="password" autocomplete="new-password" placeholder="Token criado por voce para o webhook" />
+                  </label>
+                  <label class="checkbox-row">
+                    <input id="whatsappClearCredentials" name="whatsappClearCredentials" type="checkbox" />
+                    Remover credenciais salvas desta barbearia
                   </label>
                 </section>
                 <section>

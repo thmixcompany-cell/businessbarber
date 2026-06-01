@@ -1,27 +1,63 @@
-# Ativação do WhatsApp Cloud API — Business Barber V2
+# Ativacao do WhatsApp Cloud API - Business Barber V2
 
-## O que já está preparado
-- endpoint de teste protegido: `POST /api/integrations/whatsapp/test`;
-- endpoint de envio para cliente com consentimento: `POST /api/whatsapp/send-template`;
-- webhook público: `/api/webhooks/whatsapp`;
-- bloqueio de envio quando o cliente não possui consentimento registrado;
-- registro de auditoria e histórico de mensagens.
+## O que ja esta preparado
 
-## O que depende da Meta
-1. Criar/selecionar a conta WhatsApp Business na Meta.
-2. Associar um número e obter o `Phone Number ID`.
-3. Criar/aprovar o template `retorno_cliente_sumido` em português.
-4. Gerar token permanente e obter o App Secret.
-5. No Render, configurar:
-   - `WHATSAPP_MODE=production`
-   - `WHATSAPP_GRAPH_VERSION=v23.0` (ajuste se a Meta indicar versão mais recente)
-   - `WHATSAPP_PHONE_NUMBER_ID`
-   - `WHATSAPP_ACCESS_TOKEN`
-   - `WHATSAPP_VERIFY_TOKEN`
-   - `WHATSAPP_APP_SECRET`
-   - `WHATSAPP_DEFAULT_TEMPLATE=retorno_cliente_sumido`
-   - `WHATSAPP_TEMPLATE_LANGUAGE=pt_BR`
-6. No painel da Meta, configurar callback para `https://businessbarber.com.br/api/webhooks/whatsapp` usando o mesmo verify token.
+- Endpoint de teste protegido: `POST /api/integrations/whatsapp/test`.
+- Endpoint de envio para cliente com consentimento: `POST /api/whatsapp/send-template`.
+- Webhook publico: `/api/webhooks/whatsapp`.
+- Bloqueio de envio quando o cliente nao possui consentimento registrado.
+- Registro de auditoria e historico de mensagens.
+- Credenciais WhatsApp separadas por barbearia em `integrationsByShop`.
+- O painel nao recebe de volta `accessToken`, `appSecret` ou `verifyToken`; recebe apenas status e IDs mascarados.
+- Botao `Conectar com Meta` para iniciar o Embedded Signup no painel da barbearia.
 
-## Transparência comercial
-Enquanto essas credenciais e o template não estiverem aprovados, o painel informa que a estrutura está pronta, mas não afirma que mensagens reais foram enviadas.
+## Fluxo automatico por barbearia
+
+1. Configure no servidor:
+   - `META_APP_ID`;
+   - `META_APP_SECRET`;
+   - `META_EMBEDDED_SIGNUP_CONFIG_ID`;
+   - `META_BUSINESS_ID` opcional;
+   - `META_SYSTEM_USER_ACCESS_TOKEN` opcional para localizar WABAs compartilhadas.
+2. No app da Meta, cadastre o webhook:
+
+```text
+https://businessbarber.com/api/webhooks/whatsapp
+```
+
+3. No painel da barbearia, acesse Ajustes > Integracoes e clique em `Conectar com Meta`.
+4. O dono entra com a conta Meta, escolhe a conta WhatsApp Business e o numero.
+5. O backend troca o codigo da Meta por token, salva o `Phone Number ID`, a WABA e o numero conectado somente no servidor.
+6. Depois da conexao, use `Testar WhatsApp` para validar o envio do template aprovado.
+
+O fluxo manual continua disponivel como fallback para apresentacao, suporte ou contas que ainda nao passaram pelo Embedded Signup.
+
+## Fluxo manual por barbearia
+
+1. A barbearia cria ou seleciona a conta WhatsApp Business na Meta.
+2. Associa um numero e obtem o `Phone Number ID`.
+3. Cria/aprova o template `retorno_cliente_sumido` em `pt_BR`.
+4. Gera token permanente, `App Secret` e `Verify Token`.
+5. No painel da barbearia, em Ajustes > Integracoes, cola:
+   - `WhatsApp Business Account ID` opcional;
+   - `Phone Number ID`;
+   - `Access Token permanente`;
+   - `App Secret`;
+   - `Verify Token`;
+   - template e idioma.
+6. Clica em Salvar e depois em Testar WhatsApp.
+7. No painel da Meta, configura o callback para:
+
+```text
+https://businessbarber.com/api/webhooks/whatsapp
+```
+
+Use o mesmo `Verify Token` cadastrado na barbearia.
+
+## Variaveis globais
+
+As variaveis `WHATSAPP_*` do `.env` continuam existindo como fallback da plataforma. Para multi-barbearia real, prefira salvar as credenciais por barbearia no painel.
+
+## Observacao importante
+
+Para enviar mensagem real, a conta precisa ter template aprovado na Meta e permissao para usar a WhatsApp Cloud API. Sem isso, o sistema permanece em sandbox/simulacao.

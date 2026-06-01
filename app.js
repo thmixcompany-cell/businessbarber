@@ -94,9 +94,23 @@ const defaultState = {
       mode: "sandbox",
       tokenConfigured: false,
       phoneNumberIdConfigured: false,
+      appSecretConfigured: false,
+      verifyTokenConfigured: false,
+      businessAccountIdConfigured: false,
+      wabaIdConfigured: false,
+      phoneNumberIdMasked: "",
+      businessAccountIdMasked: "",
+      wabaIdMasked: "",
+      displayPhoneNumber: "",
+      verifiedName: "",
+      credentialSource: "none",
       defaultTemplate: "retorno_cliente_sumido",
+      templateLanguage: "pt_BR",
       status: "simulado",
       lastTestAt: "",
+      embeddedSignupReady: false,
+      embeddedSignupConfigured: false,
+      connectedAt: "",
     },
     pix: {
       provider: "manual_pix",
@@ -1413,7 +1427,8 @@ function renderIntegrations() {
   const fields = {
     whatsappProvider: whatsapp.provider || "whatsapp_cloud_api",
     whatsappMode: whatsapp.mode || "sandbox",
-        whatsappTemplate: whatsapp.defaultTemplate || "retorno_cliente_sumido",
+    whatsappTemplate: whatsapp.defaultTemplate || "retorno_cliente_sumido",
+    whatsappTemplateLanguage: whatsapp.templateLanguage || "pt_BR",
     pixProvider: pix.provider || "manual_pix",
     pixMode: pix.mode || "sandbox",
     pixKey: pix.key || "",
@@ -1425,6 +1440,12 @@ function renderIntegrations() {
     const input = document.querySelector(`#${id}`);
     if (input) input.value = value;
   });
+  ["whatsappBusinessAccountId", "whatsappPhoneNumberId", "whatsappAccessToken", "whatsappAppSecret", "whatsappVerifyToken"].forEach((id) => {
+    const input = document.querySelector(`#${id}`);
+    if (input) input.value = "";
+  });
+  const clearCredentials = document.querySelector("#whatsappClearCredentials");
+  if (clearCredentials) clearCredentials.checked = false;
 
   const publicToggle = document.querySelector("#publicBookingEnabled");
   if (publicToggle) publicToggle.checked = Boolean(publicBooking.enabled);
@@ -1434,12 +1455,16 @@ function renderIntegrations() {
     bookingLink.textContent = publicUrl;
     bookingLink.href = publicUrl;
   }
+  const whatsappConnection = whatsapp.displayPhoneNumber || whatsapp.phoneNumberIdMasked || "não configurado";
+  const whatsappMetaState = whatsapp.embeddedSignupConfigured
+    ? `Meta conectada${whatsapp.verifiedName ? ` · ${whatsapp.verifiedName}` : ""}`
+    : (whatsapp.embeddedSignupReady ? "Meta pronta para conectar" : "Meta pendente no servidor");
 
   integrationStatus.innerHTML = `
     <article class="integration-status-card">
       <strong>WhatsApp</strong>
       <span>Status: ${whatsapp.status || "simulado"}</span>
-      <small>${whatsapp.tokenConfigured ? "credenciais no servidor" : "configure no Render"} · template ${whatsapp.defaultTemplate || "padrão"}</small>
+      <small>${whatsapp.tokenConfigured && whatsapp.phoneNumberIdConfigured ? `conectado (${whatsapp.credentialSource || "servidor"})` : "aguardando conexão"} · ${whatsappMetaState} · número ${whatsappConnection} · template ${whatsapp.defaultTemplate || "padrão"}</small>
     </article>
     <article class="integration-status-card">
       <strong>Pix</strong>
@@ -2215,7 +2240,14 @@ if (integrationForm) {
         ...(state.integrations || {}).whatsapp,
         provider: String(formData.get("whatsappProvider") || "whatsapp_cloud_api"),
         mode: String(formData.get("whatsappMode") || "sandbox"),
-                defaultTemplate: String(formData.get("whatsappTemplate") || "retorno_cliente_sumido").trim(),
+        defaultTemplate: String(formData.get("whatsappTemplate") || "retorno_cliente_sumido").trim(),
+        templateLanguage: String(formData.get("whatsappTemplateLanguage") || "pt_BR").trim(),
+        businessAccountId: String(formData.get("whatsappBusinessAccountId") || "").trim(),
+        phoneNumberId: String(formData.get("whatsappPhoneNumberId") || "").trim(),
+        accessToken: String(formData.get("whatsappAccessToken") || "").trim(),
+        appSecret: String(formData.get("whatsappAppSecret") || "").trim(),
+        verifyToken: String(formData.get("whatsappVerifyToken") || "").trim(),
+        clearCredentials: Boolean(formData.get("whatsappClearCredentials")),
         tokenConfigured: Boolean((state.integrations.whatsapp || {}).tokenConfigured),
       },
       pix: {
@@ -2242,6 +2274,9 @@ if (integrationForm) {
         state.integrations = await response.json();
       }
     }
+    ["businessAccountId", "phoneNumberId", "accessToken", "appSecret", "verifyToken", "clearCredentials"].forEach((key) => {
+      if (state.integrations?.whatsapp) delete state.integrations.whatsapp[key];
+    });
     saveState();
     renderAll();
     showToast("Integrações salvas.");
@@ -2249,6 +2284,113 @@ if (integrationForm) {
 }
 
 const testWhatsApp = document.querySelector("#testWhatsApp");
+const connectWhatsAppMeta = document.querySelector("#connectWhatsAppMeta");
+let facebookSdkPromise = null;
+let lastEmbeddedSignupData = {};
+
+function parseEmbeddedSignupEvent(event) {
+  if (!["https://www.facebook.com", "https://web.facebook.com"].includes(event.origin)) return;
+  let data = event.data;
+  if (typeof data === "string") {
+    try { data = JSON.parse(data); } catch { return; }
+  }
+  if (!data || data.type !== "WA_EMBEDDED_SIGNUP") return;
+  lastEmbeddedSignupData = {
+    ...(lastEmbeddedSignupData || {}),
+    ...(data.data || {}),
+    event: data.event || "",
+  };
+}
+
+function loadFacebookSdk(appId, version) {
+  if (window.FB) {
+    window.FB.init({ appId, autoLogAppEvents: false, xfbml: false, version });
+    return Promise.resolve(window.FB);
+  }
+  if (facebookSdkPromise) return facebookSdkPromise;
+  facebookSdkPromise = new Promise((resolve, reject) => {
+    window.fbAsyncInit = () => {
+      window.FB.init({ appId, autoLogAppEvents: false, xfbml: false, version });
+      resolve(window.FB);
+    };
+    const existing = document.querySelector("#facebook-jssdk");
+    if (existing) return;
+    const script = document.createElement("script");
+    script.id = "facebook-jssdk";
+    script.async = true;
+    script.defer = true;
+    script.crossOrigin = "anonymous";
+    script.src = "https://connect.facebook.net/pt_BR/sdk.js";
+    script.onerror = () => reject(new Error("facebook_sdk_load_failed"));
+    document.head.appendChild(script);
+  });
+  return facebookSdkPromise;
+}
+
+if (connectWhatsAppMeta) {
+  connectWhatsAppMeta.addEventListener("click", async () => {
+    if (!apiEnabled) {
+      showToast("Entre pelo servidor local antes de conectar pela Meta.");
+      return;
+    }
+    const configResponse = await apiFetch("/api/integrations/whatsapp/embedded-config").catch(() => null);
+    if (!configResponse?.ok) {
+      showToast("Não consegui carregar a configuração do Embedded Signup.");
+      return;
+    }
+    const metaConfig = await configResponse.json();
+    if (!metaConfig.enabled) {
+      showToast(metaConfig.message || "Configure o App da Meta no servidor antes de conectar.");
+      return;
+    }
+    window.addEventListener("message", parseEmbeddedSignupEvent);
+    lastEmbeddedSignupData = {};
+    let fb;
+    try {
+      fb = await loadFacebookSdk(metaConfig.appId, metaConfig.graphVersion || "v23.0");
+    } catch {
+      showToast("Não consegui carregar o SDK da Meta. Verifique a conexão e tente novamente.");
+      return;
+    }
+    fb.login(async (response) => {
+      const code = response?.authResponse?.code;
+      if (!code) {
+        showToast("Conexão cancelada ou não autorizada na Meta.");
+        return;
+      }
+      const completeResponse = await apiFetch("/api/integrations/whatsapp/embedded-complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code,
+          signup: lastEmbeddedSignupData,
+          wabaId: lastEmbeddedSignupData.waba_id || lastEmbeddedSignupData.whatsapp_business_account_id,
+          phoneNumberId: lastEmbeddedSignupData.phone_number_id,
+          displayPhoneNumber: lastEmbeddedSignupData.display_phone_number,
+          verifiedName: lastEmbeddedSignupData.verified_name,
+        }),
+      }).catch(() => null);
+      if (completeResponse?.ok) {
+        state.integrations = await completeResponse.json();
+        saveState();
+        await hydrateStateFromApi();
+        renderAll();
+        showToast("WhatsApp conectado pela Meta para esta barbearia.");
+        return;
+      }
+      const error = await completeResponse?.json?.().catch(() => ({}));
+      showToast(error?.message || "A conexão com a Meta não foi concluída.");
+    }, {
+      config_id: metaConfig.configId,
+      response_type: "code",
+      override_default_response_type: true,
+      extras: {
+        setup: {},
+      },
+    });
+  });
+}
+
 if (testWhatsApp) {
   testWhatsApp.addEventListener("click", async () => {
     const client = state.clients[0] || { phone: "559999900000", name: "cliente" };
@@ -2466,4 +2608,3 @@ async function initApp() {
 }
 
 initApp();
-
