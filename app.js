@@ -281,7 +281,7 @@ const state = {
 
 function saveState() {
   localStorage.setItem(storageKey, JSON.stringify(state));
-  if (apiEnabled) {
+  if (apiEnabled && !isBarberUser()) {
     apiFetch("/api/state", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -385,6 +385,11 @@ const campaignReportList = document.querySelector("#campaignReportList");
 const clientHistoryBox = document.querySelector("#clientHistoryBox");
 const appointmentForm = document.querySelector("#appointmentForm");
 const scheduleDate = document.querySelector("#scheduleDate");
+const employeeScheduleDate = document.querySelector("#employeeScheduleDate");
+const employeeAgendaTitle = document.querySelector("#employeeAgendaTitle");
+const employeeSummary = document.querySelector("#employeeSummary");
+const employeeScheduleList = document.querySelector("#employeeScheduleList");
+const employeeNextCard = document.querySelector("#employeeNextCard");
 const scheduleTitle = document.querySelector("#scheduleTitle");
 const priorityList = document.querySelector("#priorityList");
 const priorityHeaderAction = document.querySelector("#priorityHeaderAction");
@@ -430,6 +435,27 @@ function appointmentDate(appointment) {
 
 function selectedScheduleDate() {
   return scheduleDate.value || todayIso();
+}
+
+function selectedEmployeeDate() {
+  return employeeScheduleDate?.value || todayIso();
+}
+
+function normalizeName(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+function isBarberUser() {
+  return state.user?.role === "barber";
+}
+
+function barberOwnsAppointment(appointment) {
+  if (!isBarberUser()) return true;
+  return normalizeName(appointment.barber) === normalizeName(state.user?.name);
 }
 
 function isSameSlot(left, right) {
@@ -893,6 +919,122 @@ function renderSchedule() {
       appointmentForm.elements.status.value = appointment.status || "Confirmado";
       document.querySelector("#appointmentSubmit").textContent = "Salvar";
       showToast("Edite o horário no formulário de agenda.");
+    });
+  });
+}
+
+function employeeAppointments() {
+  return (state.appointments || [])
+    .map((item, originalIndex) => ({ ...item, originalIndex }))
+    .filter((item) => appointmentDate(item) === selectedEmployeeDate())
+    .filter((item) => barberOwnsAppointment(item))
+    .sort((a, b) => String(a.time || "").localeCompare(String(b.time || "")));
+}
+
+async function updateEmployeeAppointment(index, patch, message) {
+  const appointment = state.appointments[index];
+  if (!appointment || !barberOwnsAppointment(appointment)) {
+    showToast("Esse horário não pertence ao seu usuário.");
+    return;
+  }
+  const next = { ...appointment, ...patch };
+  state.appointments[index] = next;
+  saveState();
+  renderAll();
+  if (apiEnabled && appointment.id) {
+    const response = await apiFetch(`/api/appointments/${appointment.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    }).catch(() => null);
+    if (response?.ok) {
+      state.appointments[index] = await response.json();
+      saveState();
+      renderAll();
+    }
+  }
+  showToast(message);
+}
+
+function renderEmployeePanel() {
+  if (!employeeScheduleList) return;
+  if (employeeScheduleDate && !employeeScheduleDate.value) {
+    employeeScheduleDate.value = todayIso();
+  }
+  const appointments = employeeAppointments();
+  const booked = appointments.filter((item) => !item.open);
+  const finished = booked.filter((item) => ["Finalizado", "Recuperado"].includes(item.status));
+  const pixPending = booked.filter((item) => item.status === "Sinal Pix" && !item.pixPaid);
+  const nextAppointment = booked.find((item) => !["Finalizado", "Faltou", "Cancelado"].includes(item.status));
+  const totalTicket = booked.reduce((sum, item) => sum + Number(item.ticket || item.value || 0), 0);
+
+  if (employeeAgendaTitle) {
+    employeeAgendaTitle.textContent = `${state.user?.name || "Profissional"} - ${formatDateTitle(selectedEmployeeDate())}`;
+  }
+  if (employeeSummary) {
+    employeeSummary.innerHTML = `
+      <article><strong>${booked.length}</strong><span>atendimentos</span></article>
+      <article><strong>${finished.length}</strong><span>finalizados</span></article>
+      <article><strong>${pixPending.length}</strong><span>Pix pendente</span></article>
+      <article><strong>${money.format(totalTicket)}</strong><span>ticket previsto</span></article>
+    `;
+  }
+  if (employeeNextCard) {
+    employeeNextCard.innerHTML = nextAppointment
+      ? `
+        <span class="eyebrow">${nextAppointment.time}</span>
+        <strong>${nextAppointment.client}</strong>
+        <p>${nextAppointment.service || "Serviço"} com ${nextAppointment.barber}. Status atual: ${nextAppointment.pixPaid ? "Pix pago" : nextAppointment.status || "Confirmado"}.</p>
+      `
+      : `
+        <span class="eyebrow">Agenda em dia</span>
+        <strong>Nenhum atendimento pendente</strong>
+        <p>Quando houver novos horários para você, eles aparecem aqui com as ações rápidas.</p>
+      `;
+  }
+
+  employeeScheduleList.innerHTML = appointments.length
+    ? appointments
+        .map((item) => {
+          const className = item.open ? "appointment open" : item.recovered ? "appointment recovered" : "appointment";
+          const pillClass = item.status === "Sinal Pix" && !item.pixPaid ? "status-pill pix" : item.status === "Finalizado" || item.recovered ? "status-pill good" : "status-pill";
+          const statusText = item.pixPaid ? "Pix pago" : item.status || "Confirmado";
+          const actions = item.open
+            ? `<span class="muted">Horário livre para o gerente preencher.</span>`
+            : `
+              <div class="appointment-actions appointment-actions-three employee-actions">
+                ${item.status === "Sinal Pix" && !item.pixPaid ? `<button class="tiny-button" data-employee-action="pix" data-index="${item.originalIndex}" type="button">Marcar Pix</button>` : `<button class="tiny-button" data-employee-action="confirm" data-index="${item.originalIndex}" type="button">Confirmar</button>`}
+                <button class="tiny-button" data-employee-action="finish" data-index="${item.originalIndex}" type="button">Finalizar</button>
+                <button class="tiny-button" data-employee-action="miss" data-index="${item.originalIndex}" type="button">Faltou</button>
+              </div>
+            `;
+          return `
+            <article class="${className}">
+              <div class="time">${item.time}</div>
+              <div class="appointment-body">
+                <div class="appointment-header">
+                  <div class="appointment-main">
+                    <strong>${item.client}</strong>
+                    <span>${item.service || "Serviço não informado"}</span>
+                  </div>
+                  <span class="${pillClass} appointment-status">${statusText}</span>
+                </div>
+                ${actions}
+              </div>
+            </article>
+          `;
+        })
+        .join("")
+    : `<article class="empty-state"><strong>Nenhum horário para você nessa data</strong><span>Confira outra data ou fale com o gerente da barbearia.</span></article>`;
+
+  employeeScheduleList.querySelectorAll("[data-employee-action]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const index = Number(button.dataset.index);
+      const action = button.dataset.employeeAction;
+      if (action === "pix") updateEmployeeAppointment(index, { pixPaid: true, pixPaidAt: new Date().toISOString() }, "Pix marcado como pago.");
+      if (action === "confirm") updateEmployeeAppointment(index, { status: "Confirmado" }, "Presença confirmada.");
+      if (action === "finish") updateEmployeeAppointment(index, { status: "Finalizado", finishedAt: new Date().toISOString() }, "Atendimento finalizado.");
+      if (action === "miss") updateEmployeeAppointment(index, { status: "Faltou", missedAt: new Date().toISOString() }, "Falta registrada.");
     });
   });
 }
@@ -1773,10 +1915,49 @@ function advanceProspect(prospect) {
   showToast(`${prospect.barbershop} avanãou para: ${nextStatus}.`);
 }
 
+function showView(viewId) {
+  const target = document.querySelector(`#${viewId}`);
+  if (!target) return;
+  document.querySelectorAll(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.view === viewId));
+  document.querySelectorAll(".view").forEach((view) => view.classList.remove("active"));
+  target.classList.add("active");
+  window.scrollTo(0, 0);
+}
+
+function applyRoleExperience() {
+  document.body.dataset.role = state.user?.role || "owner";
+  const barberMode = isBarberUser();
+  document.querySelectorAll(".nav-item").forEach((button) => {
+    const employeeNav = button.dataset.view === "employee";
+    button.classList.toggle("hidden", barberMode ? !employeeNav : employeeNav);
+  });
+  const topbarLabel = document.querySelector(".topbar .eyebrow");
+  const topbarTitle = document.querySelector(".topbar h1");
+  const topbarSubtitle = document.querySelector(".topbar-subtitle");
+  const quickCampaignButton = document.querySelector("#quickCampaign");
+  const templateButton = document.querySelector("#openTemplates");
+  if (barberMode) {
+    if (topbarLabel) topbarLabel.textContent = "Painel do profissional";
+    if (topbarTitle) topbarTitle.textContent = "Minha agenda";
+    if (topbarSubtitle) topbarSubtitle.textContent = "Veja seus horários, confirme presença, marque Pix e finalize atendimentos sem acessar áreas administrativas.";
+    quickCampaignButton?.classList.add("hidden");
+    templateButton?.classList.add("hidden");
+    if (!document.querySelector("#employee")?.classList.contains("active")) showView("employee");
+  } else {
+    if (topbarLabel) topbarLabel.textContent = "Painel da barbearia";
+    if (topbarTitle) topbarTitle.textContent = "Agenda de hoje";
+    if (topbarSubtitle) topbarSubtitle.textContent = "Acompanhe horários vagos, confirmações, retornos e oportunidades de encaixe em um só lugar.";
+    quickCampaignButton?.classList.remove("hidden");
+    templateButton?.classList.remove("hidden");
+  }
+}
+
 function renderAll() {
+  applyRoleExperience();
   renderMetrics();
   renderPriorityBoard();
   renderSchedule();
+  renderEmployeePanel();
   renderSuggestions();
   renderInactiveClients();
   renderWaitlist();
@@ -1800,11 +1981,7 @@ function renderAll() {
 
 document.querySelectorAll(".nav-item").forEach((button) => {
   button.addEventListener("click", () => {
-    document.querySelectorAll(".nav-item").forEach((item) => item.classList.remove("active"));
-    document.querySelectorAll(".view").forEach((view) => view.classList.remove("active"));
-    button.classList.add("active");
-    document.querySelector(`#${button.dataset.view}`).classList.add("active");
-    window.scrollTo(0, 0);
+    showView(button.dataset.view);
   });
 });
 
@@ -1815,6 +1992,7 @@ scheduleDate.addEventListener("change", () => {
   }
   renderAll();
 });
+employeeScheduleDate?.addEventListener("change", renderEmployeePanel);
 
 document.querySelector("#fillBestSlot").addEventListener("click", () => {
   const slot = bestOpenSlot();

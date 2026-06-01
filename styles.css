@@ -3221,6 +3221,92 @@ body:has(.app-shell) .invite-card-meta {
   border: 1px solid rgba(232, 214, 184, 0.08);
 }
 
+.hidden {
+  display: none !important;
+}
+
+body[data-role="barber"] .priority-board,
+body[data-role="barber"] .metric-grid,
+body[data-role="barber"] .sidebar-card {
+  display: none !important;
+}
+
+body[data-role="barber"] .main {
+  gap: 20px;
+}
+
+body[data-role="barber"] .topbar {
+  border-color: rgba(210, 163, 95, 0.2);
+  background:
+    linear-gradient(135deg, rgba(210, 163, 95, 0.16), transparent 48%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.032)),
+    #181b1d;
+}
+
+.employee-view {
+  grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.75fr);
+}
+
+.employee-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.employee-summary-grid article,
+.employee-rules article {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid rgba(232, 214, 184, 0.12);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.035)),
+    #191c1e;
+}
+
+.employee-summary-grid strong {
+  display: block;
+  color: #f7d49b;
+  font-size: clamp(22px, 3vw, 34px);
+  line-height: 1;
+}
+
+.employee-summary-grid span,
+.employee-rules span {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.employee-rules {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.employee-actions {
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .employee-view {
+    grid-template-columns: 1fr;
+  }
+
+  .employee-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .employee-summary-grid,
+  .employee-actions.appointment-actions-three {
+    grid-template-columns: 1fr;
+  }
+}
+
 body:has(.app-shell) .appointment-actions {
   gap: 10px;
   justify-content: end;

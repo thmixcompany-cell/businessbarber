@@ -59,6 +59,18 @@ try {
   if (!message.simulated) throw new Error("sandbox_should_not_send_real_message");
   const smokeRunId = Date.now().toString(36);
   const appointment = await fetchJson("/api/appointments", { method: "POST", headers: auth, body: JSON.stringify({ time: "19:30", barber: `Smoke ${smokeRunId}`, client: "Cliente Smoke", service: "Corte", status: "Confirmado", date: "2030-01-02" }) });
+  const barberUser = await fetchJson("/api/users", { method: "POST", headers: auth, body: JSON.stringify({ name: "Diego", email: `diego.${smokeRunId}@example.com`, password: "BarbeiroSmoke#2026", role: "barber" }) });
+  const barberAppointment = await fetchJson("/api/appointments", { method: "POST", headers: auth, body: JSON.stringify({ time: "20:00", barber: "Diego", client: "Cliente Diego", service: "Corte", status: "Confirmado", date: "2030-01-03" }) });
+  const otherAppointment = await fetchJson("/api/appointments", { method: "POST", headers: auth, body: JSON.stringify({ time: "20:30", barber: "Rafa", client: "Cliente Rafa", service: "Barba", status: "Confirmado", date: "2030-01-03" }) });
+  const barberSession = await fetchJson("/api/login", { method: "POST", body: JSON.stringify({ email: barberUser.email, password: "BarbeiroSmoke#2026" }) });
+  const barberAuth = { Authorization: `Bearer ${barberSession.token}` };
+  const barberState = await fetchJson("/api/state", { headers: barberAuth });
+  if (barberState.user.role !== "barber" || barberState.appointments.some((item) => item.barber !== "Diego")) throw new Error("barber_scope_invalid");
+  if (barberState.campaigns.length || barberState.inactiveClients.length || barberState.auditLogs.length) throw new Error("barber_sensitive_data_visible");
+  await fetchJson("/api/campaigns", { method: "POST", headers: barberAuth, body: JSON.stringify({ name: "Nao autorizado" }) }, 403);
+  await fetchJson(`/api/appointments/${otherAppointment.id}`, { method: "PUT", headers: barberAuth, body: JSON.stringify({ status: "Finalizado" }) }, 403);
+  const barberUpdate = await fetchJson(`/api/appointments/${barberAppointment.id}`, { method: "PUT", headers: barberAuth, body: JSON.stringify({ status: "Finalizado", client: "Cliente Alterado" }) });
+  if (barberUpdate.status !== "Finalizado" || barberUpdate.client !== "Cliente Diego") throw new Error("barber_update_permissions_invalid");
   const campaign = await fetchJson("/api/campaigns", { method: "POST", headers: auth, body: JSON.stringify({ name: "Smoke retorno", segment: "Teste", sent: 0, responses: 0, bookings: 0, revenue: 0, recipients: ["Cliente Smoke"] }) });
   await fetchJson("/api/integrations/whatsapp/test", { method: "POST", headers: auth, body: JSON.stringify({ to: "559999900123", name: "Cliente Smoke" }) });
   const booking = await fetchJson("/api/public/booking?barbearia=barbearia-alpha");
@@ -72,6 +84,8 @@ try {
   const protectedTests = await fetch(`${baseUrl}/tests/smoke.mjs`); if (protectedTests.status !== 404) throw new Error("internal_test_exposed");
   for (const page of ["/", "/app.html", "/public.html?barbearia=barbearia-alpha", "/admin.html", "/privacidade.html", "/termos.html"]) { const res = await fetch(`${baseUrl}${page}`); if (!res.ok) throw new Error(`page_unavailable:${page}`); }
   await fetchJson(`/api/campaigns/${campaign.id}`, { method: "DELETE", headers: auth });
+  await fetchJson(`/api/appointments/${otherAppointment.id}`, { method: "DELETE", headers: auth });
+  await fetchJson(`/api/appointments/${barberAppointment.id}`, { method: "DELETE", headers: auth });
   await fetchJson(`/api/appointments/${appointment.id}`, { method: "DELETE", headers: auth });
   await fetchJson(`/api/clients/${client.id}`, { method: "DELETE", headers: auth });
   console.log("Smoke test V2 passou: segurança, isolamento, LGPD, WhatsApp sandbox, agendamento público, CRUD e páginas OK.");

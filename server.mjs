@@ -148,6 +148,18 @@ function canManageSettings(user) { return isPlatformAdmin(user) || user?.role ==
 function sameTenant(entity, shopId) { return entity?.barbershopId === shopId; }
 function scope(list, shopId) { return (list || []).filter((item) => sameTenant(item, shopId)); }
 function withTenant(item, shopId) { return { ...item, barbershopId: shopId }; }
+function normalizedName(value) {
+  return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+}
+function isBarber(user) { return user?.role === "barber"; }
+function ownsAppointment(user, appointment) {
+  if (!isBarber(user)) return true;
+  return normalizedName(appointment?.barber) === normalizedName(user?.name);
+}
+function staffAppointments(db, user, shopId) {
+  const appointments = scope(db.appointments, shopId);
+  return isBarber(user) ? appointments.filter((item) => ownsAppointment(user, item)) : appointments;
+}
 function replaceTenantCollection(db, name, shopId, items) {
   db[name] = [...(db[name] || []).filter((item) => !sameTenant(item, shopId)), ...(items || []).map((item) => withTenant(item, shopId))];
 }
@@ -467,17 +479,21 @@ function customerState(db, user) {
   const shopId = shopIdFor(user, db);
   const shop = db.barbershops.find((item) => item.id === shopId);
   const campaigns = scope(db.campaigns, shopId);
-  const appointments = scope(db.appointments, shopId);
+  const appointments = staffAppointments(db, user, shopId);
+  const appointmentClientNames = new Set(appointments.map((item) => item.client).filter(Boolean));
+  const clients = isBarber(user) ? scope(db.clients, shopId).filter((client) => appointmentClientNames.has(client.name)) : scope(db.clients, shopId);
+  const users = isBarber(user) ? [publicUser(user)] : scope(db.users, shopId).map(publicUser);
+  const professionals = isBarber(user) ? scope(db.professionals, shopId).filter((item) => normalizedName(item.name) === normalizedName(user.name)) : scope(db.professionals, shopId);
   const recoveredRevenue = campaigns.reduce((sum, item) => sum + Number(item.revenue || 0), 0);
   return {
     user: publicUser(user), currentBarbershopId: shopId, barbershops: shop ? [shop] : [],
-    users: scope(db.users, shopId).map(publicUser), clients: scope(db.clients, shopId), professionals: scope(db.professionals, shopId), services: scope(db.services, shopId),
-    campaigns, inactiveClients: scope(db.inactiveClients, shopId), appointments, waitlist: scope(db.waitlist, shopId), clubPlans: scope(db.clubPlans, shopId), messageHistory: scope(db.messageHistory, shopId), pixCharges: scope(db.pixCharges, shopId),
+    users, clients, professionals, services: scope(db.services, shopId),
+    campaigns: isBarber(user) ? [] : campaigns, inactiveClients: isBarber(user) ? [] : scope(db.inactiveClients, shopId), appointments, waitlist: isBarber(user) ? [] : scope(db.waitlist, shopId), clubPlans: isBarber(user) ? [] : scope(db.clubPlans, shopId), messageHistory: isBarber(user) ? [] : scope(db.messageHistory, shopId), pixCharges: isBarber(user) ? scope(db.pixCharges, shopId).filter((item) => appointments.some((appointment) => appointment.id && appointment.id === item.appointmentId)) : scope(db.pixCharges, shopId),
     recoveredRevenue, openSlots: appointments.filter((item) => item.open).length,
     integrations: integrationFor(db, shopId),
     publicBooking: db.publicBookingByShop[shopId] || { enabled: true, slug: shop?.slug || "", depositRequired: false, headline: `Agende seu horário na ${shop?.name || "barbearia"}` },
     onboardingChecklist: db.onboardingByShop[shopId] || [],
-    auditLogs: (db.auditLogs || []).filter((log) => !log.barbershopId || log.barbershopId === shopId).slice(0, 100),
+    auditLogs: isBarber(user) ? [] : (db.auditLogs || []).filter((log) => !log.barbershopId || log.barbershopId === shopId).slice(0, 100),
   };
 }
 
@@ -659,6 +675,7 @@ async function handleApi(req, res, url) {
   if (pathname === "/api/me" && req.method === "GET") return sendJson(res, 200, { user: publicUser(user), currentBarbershopId: shopId });
   if (pathname === "/api/state" && req.method === "GET") return sendJson(res, 200, customerState(db, user));
   if (pathname === "/api/state" && req.method === "PUT") {
+    if (isBarber(user)) return sendJson(res, 403, { error: "manager_required" });
     const body = await readBody(req);
     for (const name of tenantCollections) if (Array.isArray(body[name])) replaceTenantCollection(db, name, shopId, body[name]);
     if (canManageSettings(user) && body.publicBooking) db.publicBookingByShop[shopId] = { ...(db.publicBookingByShop[shopId] || {}), ...body.publicBooking };
@@ -703,8 +720,15 @@ async function handleApi(req, res, url) {
     db.users = db.users.map((item) => item.id === id ? next : item); addAudit(db, "user.updated", actor, { id }, target.barbershopId); await writeDb(db); return sendJson(res, 200, publicUser(next));
   }
 
-  if (pathname === "/api/clients" && req.method === "GET") return sendJson(res, 200, scope(db.clients, shopId));
+  if (pathname === "/api/clients" && req.method === "GET") {
+    if (isBarber(user)) {
+      const names = new Set(staffAppointments(db, user, shopId).map((item) => item.client).filter(Boolean));
+      return sendJson(res, 200, scope(db.clients, shopId).filter((client) => names.has(client.name)));
+    }
+    return sendJson(res, 200, scope(db.clients, shopId));
+  }
   if (pathname === "/api/clients" && req.method === "POST") {
+    if (isBarber(user)) return sendJson(res, 403, { error: "manager_required" });
     const body = await readBody(req); const client = withTenant({ id: makeId("client"), name: sanitizeText(body.name), phone: normalizePhone(body.phone), lastVisit: body.lastVisit || "", favoriteService: sanitizeText(body.favoriteService), preferredPeriod: sanitizeText(body.preferredPeriod), ticket: Number(body.ticket || 0), professional: sanitizeText(body.professional), status: body.status || "Ativo", consentWhatsapp: Boolean(body.consentWhatsapp), createdAt: new Date().toISOString() }, shopId);
     db.clients.push(client); addAudit(db, "client.created", actor, { id: client.id }, shopId); await writeDb(db); return sendJson(res, 201, client);
   }
@@ -713,30 +737,34 @@ async function handleApi(req, res, url) {
     return sendJson(res, 200, { client, appointments: scope(db.appointments, shopId).filter((item) => item.client === client.name), campaigns: scope(db.campaigns, shopId).filter((item) => (item.recipients || []).includes(client.name)) });
   }
   if (pathname.startsWith("/api/clients/") && req.method === "PUT") {
+    if (isBarber(user)) return sendJson(res, 403, { error: "manager_required" });
     const id = pathname.split("/").pop(); const client = scope(db.clients, shopId).find((item) => item.id === id); if (!client) return sendJson(res, 404, { error: "client_not_found" }); const body = await readBody(req);
     db.clients = db.clients.map((item) => item.id === id ? { ...item, ...body, id, barbershopId: shopId, phone: body.phone !== undefined ? normalizePhone(body.phone) : item.phone } : item); addAudit(db, "client.updated", actor, { id }, shopId); await writeDb(db); return sendJson(res, 200, db.clients.find((item) => item.id === id));
   }
   if (pathname.startsWith("/api/clients/") && req.method === "DELETE") {
+    if (isBarber(user)) return sendJson(res, 403, { error: "manager_required" });
     const id = pathname.split("/").pop(); const client = scope(db.clients, shopId).find((item) => item.id === id); if (!client) return sendJson(res, 404, { error: "client_not_found" });
     db.clients = db.clients.filter((item) => item.id !== id); db.appointments = db.appointments.map((item) => sameTenant(item, shopId) && item.client === client.name ? { ...item, client: "Cliente removido", phone: "" } : item); addAudit(db, "client.deleted_lgpd", actor, { id }, shopId); await writeDb(db); return sendJson(res, 200, { ok: true });
   }
   if (pathname === "/api/import/clients" && req.method === "POST") {
+    if (isBarber(user)) return sendJson(res, 403, { error: "manager_required" });
     const body = await readBody(req); const imported = parseClientCsv(body.csv, shopId); db.clients.push(...imported); addAudit(db, "client.imported", actor, { imported: imported.length, consentRequired: true }, shopId); await writeDb(db); return sendJson(res, 200, { imported: imported.length, clients: scope(db.clients, shopId) });
   }
 
-  if (pathname === "/api/appointments" && req.method === "GET") return sendJson(res, 200, scope(db.appointments, shopId));
+  if (pathname === "/api/appointments" && req.method === "GET") return sendJson(res, 200, staffAppointments(db, user, shopId));
   if (pathname === "/api/appointments" && req.method === "POST") {
+    if (isBarber(user)) return sendJson(res, 403, { error: "manager_required" });
     const body = await readBody(req); const appointment = withTenant({ id: makeId("appt"), status: body.status || "Confirmado", ...body }, shopId); if (scope(db.appointments, shopId).some((item) => appointmentConflicts(item, appointment))) return sendJson(res, 409, { error: "slot_unavailable" }); db.appointments.push(appointment); addAudit(db, "appointment.created", actor, { id: appointment.id }, shopId); await writeDb(db); return sendJson(res, 201, appointment);
   }
   if (pathname.startsWith("/api/appointments/") && req.method === "PUT") {
-    const id = pathname.split("/").pop(); const target = scope(db.appointments, shopId).find((item, idx) => (item.id || `legacy-${idx}`) === id); if (!target) return sendJson(res, 404, { error: "appointment_not_found" }); const body = await readBody(req); const next = { ...target, ...body, id, barbershopId: shopId }; if (scope(db.appointments, shopId).some((item) => item.id !== id && appointmentConflicts(item, next))) return sendJson(res, 409, { error: "slot_unavailable" }); db.appointments = db.appointments.map((item) => item.id === id ? next : item); addAudit(db, "appointment.updated", actor, { id }, shopId); await writeDb(db); return sendJson(res, 200, next);
+    const id = pathname.split("/").pop(); const target = scope(db.appointments, shopId).find((item, idx) => (item.id || `legacy-${idx}`) === id); if (!target) return sendJson(res, 404, { error: "appointment_not_found" }); if (!ownsAppointment(user, target)) return sendJson(res, 403, { error: "appointment_forbidden" }); const body = await readBody(req); const barberPatch = isBarber(user) ? { status: body.status || target.status, pixPaid: body.pixPaid !== undefined ? Boolean(body.pixPaid) : target.pixPaid, pixPaidAt: body.pixPaidAt || target.pixPaidAt, finishedAt: body.finishedAt || target.finishedAt, missedAt: body.missedAt || target.missedAt } : body; const next = { ...target, ...barberPatch, id, barbershopId: shopId }; if (!isBarber(user) && scope(db.appointments, shopId).some((item) => item.id !== id && appointmentConflicts(item, next))) return sendJson(res, 409, { error: "slot_unavailable" }); db.appointments = db.appointments.map((item) => item.id === id ? next : item); addAudit(db, "appointment.updated", actor, { id, role: user.role }, shopId); await writeDb(db); return sendJson(res, 200, next);
   }
-  if (pathname.startsWith("/api/appointments/") && req.method === "DELETE") { const id = pathname.split("/").pop(); db.appointments = db.appointments.filter((item) => !(sameTenant(item, shopId) && item.id === id)); addAudit(db, "appointment.deleted", actor, { id }, shopId); await writeDb(db); return sendJson(res, 200, { ok: true }); }
+  if (pathname.startsWith("/api/appointments/") && req.method === "DELETE") { if (isBarber(user)) return sendJson(res, 403, { error: "manager_required" }); const id = pathname.split("/").pop(); db.appointments = db.appointments.filter((item) => !(sameTenant(item, shopId) && item.id === id)); addAudit(db, "appointment.deleted", actor, { id }, shopId); await writeDb(db); return sendJson(res, 200, { ok: true }); }
 
-  if (pathname === "/api/campaigns" && req.method === "GET") return sendJson(res, 200, scope(db.campaigns, shopId));
-  if (pathname === "/api/campaigns" && req.method === "POST") { const body = await readBody(req); const campaign = withTenant({ id: makeId("camp"), status: "Rascunho", createdAt: new Date().toISOString().slice(0, 10), sent: 0, responses: 0, bookings: 0, revenue: 0, ...body }, shopId); db.campaigns.unshift(campaign); addAudit(db, "campaign.created", actor, { id: campaign.id }, shopId); await writeDb(db); return sendJson(res, 201, campaign); }
-  if (pathname.startsWith("/api/campaigns/") && req.method === "PUT") { const id = pathname.split("/").pop(); const found = scope(db.campaigns, shopId).find((item) => item.id === id); if (!found) return sendJson(res, 404, { error: "campaign_not_found" }); const body = await readBody(req); const next = { ...found, ...body, id, barbershopId: shopId }; db.campaigns = db.campaigns.map((item) => item.id === id ? next : item); addAudit(db, "campaign.updated", actor, { id }, shopId); await writeDb(db); return sendJson(res, 200, next); }
-  if (pathname.startsWith("/api/campaigns/") && req.method === "DELETE") { const id = pathname.split("/").pop(); db.campaigns = db.campaigns.filter((item) => !(sameTenant(item, shopId) && item.id === id)); addAudit(db, "campaign.deleted", actor, { id }, shopId); await writeDb(db); return sendJson(res, 200, { ok: true }); }
+  if (pathname === "/api/campaigns" && req.method === "GET") return sendJson(res, 200, isBarber(user) ? [] : scope(db.campaigns, shopId));
+  if (pathname === "/api/campaigns" && req.method === "POST") { if (isBarber(user)) return sendJson(res, 403, { error: "manager_required" }); const body = await readBody(req); const campaign = withTenant({ id: makeId("camp"), status: "Rascunho", createdAt: new Date().toISOString().slice(0, 10), sent: 0, responses: 0, bookings: 0, revenue: 0, ...body }, shopId); db.campaigns.unshift(campaign); addAudit(db, "campaign.created", actor, { id: campaign.id }, shopId); await writeDb(db); return sendJson(res, 201, campaign); }
+  if (pathname.startsWith("/api/campaigns/") && req.method === "PUT") { if (isBarber(user)) return sendJson(res, 403, { error: "manager_required" }); const id = pathname.split("/").pop(); const found = scope(db.campaigns, shopId).find((item) => item.id === id); if (!found) return sendJson(res, 404, { error: "campaign_not_found" }); const body = await readBody(req); const next = { ...found, ...body, id, barbershopId: shopId }; db.campaigns = db.campaigns.map((item) => item.id === id ? next : item); addAudit(db, "campaign.updated", actor, { id }, shopId); await writeDb(db); return sendJson(res, 200, next); }
+  if (pathname.startsWith("/api/campaigns/") && req.method === "DELETE") { if (isBarber(user)) return sendJson(res, 403, { error: "manager_required" }); const id = pathname.split("/").pop(); db.campaigns = db.campaigns.filter((item) => !(sameTenant(item, shopId) && item.id === id)); addAudit(db, "campaign.deleted", actor, { id }, shopId); await writeDb(db); return sendJson(res, 200, { ok: true }); }
 
   if (pathname === "/api/integrations" && req.method === "GET") return sendJson(res, 200, integrationFor(db, shopId));
   if (pathname === "/api/integrations/whatsapp/embedded-config" && req.method === "GET") {
@@ -853,7 +881,7 @@ async function handleApi(req, res, url) {
     try { const result = await sendWhatsAppTemplate({ db, shopId, to: client.phone, templateName: body.templateName || integrationFor(db, shopId).whatsapp.defaultTemplate, variables: Array.isArray(body.variables) ? body.variables : [client.name] }); db.messageHistory.push(withTenant({ id: makeId("msg"), clientId: client.id, client: client.name, status: result.simulated ? "simulado" : "enviado", providerMessageId: result.messageId, at: new Date().toISOString() }, shopId)); addAudit(db, "whatsapp.template_sent", actor, { clientId: client.id, simulated: result.simulated }, shopId); await writeDb(db); return sendJson(res, 200, result); } catch { return sendJson(res, 502, { error: "whatsapp_send_failed" }); }
   }
   if (pathname === "/api/integrations/pix/test" && req.method === "POST") return sendJson(res, 200, { ok: true, simulated: true, message: "Pix permanece em modo manual até configurar um provedor homologado." });
-  if (pathname === "/api/audit-logs" && req.method === "GET") return sendJson(res, 200, isPlatformAdmin(user) ? db.auditLogs : db.auditLogs.filter((log) => log.barbershopId === shopId));
+  if (pathname === "/api/audit-logs" && req.method === "GET") return sendJson(res, 200, isBarber(user) ? [] : (isPlatformAdmin(user) ? db.auditLogs : db.auditLogs.filter((log) => log.barbershopId === shopId)));
   return sendJson(res, 404, { error: "not_found" });
 }
 

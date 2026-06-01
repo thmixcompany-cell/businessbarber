@@ -37,6 +37,10 @@
         </div>
 
         <nav class="nav-list">
+          <button class="nav-item employee-nav hidden" data-view="employee" type="button">
+            <span class="nav-icon">BB</span>
+            Minha agenda
+          </button>
           <button class="nav-item active" data-view="dashboard" type="button">
             <span class="nav-icon">⌂</span>
             Agenda
@@ -122,6 +126,40 @@
             <strong id="noshowAvoided">R$ 680</strong>
             <small>somente valores confirmados</small>
           </article>
+        </section>
+
+        <section class="workspace-grid view employee-view" id="employee">
+          <div class="panel employee-agenda-panel">
+            <div class="panel-header">
+              <div>
+                <span class="eyebrow">Painel do profissional</span>
+                <h2 id="employeeAgendaTitle">Minha agenda de hoje</h2>
+              </div>
+              <input id="employeeScheduleDate" type="date" aria-label="Data da minha agenda" />
+            </div>
+            <div class="employee-summary-grid" id="employeeSummary"></div>
+            <div class="schedule-list employee-schedule-list" id="employeeScheduleList"></div>
+          </div>
+
+          <div class="panel employee-side-panel">
+            <div class="panel-header">
+              <div>
+                <span class="eyebrow">Rotina do dia</span>
+                <h2>Próximo atendimento</h2>
+              </div>
+            </div>
+            <div class="opportunity-card" id="employeeNextCard"></div>
+            <div class="employee-rules">
+              <article>
+                <strong>O que o barbeiro pode fazer</strong>
+                <span>Confirmar presença, marcar Pix, finalizar atendimento e registrar falta dos próprios horários.</span>
+              </article>
+              <article>
+                <strong>O que fica com o dono/gerente</strong>
+                <span>Campanhas, clientes, relatórios, integrações, preços, equipe e configurações.</span>
+              </article>
+            </div>
+          </div>
         </section>
 
         <section class="workspace-grid view active" id="dashboard">
