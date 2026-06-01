@@ -3530,7 +3530,9 @@ body:has(.admin-shell) .admin-view.active {
 .marketing-main { box-sizing:border-box; width:100%; max-width:1200px; margin:0 auto; padding:44px 32px 80px; }
 .marketing-hero { display:grid; grid-template-columns: minmax(400px, 1.03fr) minmax(380px, .97fr); gap:56px; align-items:center; min-height:620px; }
 .hero-copy h1 { font-size: clamp(45px, 5vw, 62px); line-height:1.05; margin:18px 0 22px; letter-spacing:-.055em; max-width:680px; }
-.hero-copy h1 em { color:#e7bb74; font-style:normal; }
+.hero-copy h1 em,
+.fit-section h2 em,
+.roi-section h2 em { color:#e7bb74; font-style:normal; }
 .hero-copy p { color:#bbb1a5; line-height:1.7; font-size:17px; max-width:560px; }
 .hero-actions { display:flex; gap:14px; margin-top:34px; }
 .hero-actions a { text-decoration:none; display:inline-flex; align-items:center; justify-content:center; padding:17px 25px; }
