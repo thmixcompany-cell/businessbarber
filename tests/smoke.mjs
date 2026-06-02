@@ -18,6 +18,9 @@ async function fetchJson(path, options = {}, expectedStatus = null) {
   return payload;
 }
 async function waitForServer() { for (let i = 0; i < 40; i += 1) { try { await fetchJson("/api/health"); return; } catch { await delay(150); } } throw new Error("server_not_ready"); }
+function localDateIso(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
 try {
   await waitForServer();
   const health = await fetchJson("/api/health");
@@ -63,6 +66,12 @@ try {
   if (!message.simulated) throw new Error("sandbox_should_not_send_real_message");
   const smokeRunId = Date.now().toString(36);
   const appointment = await fetchJson("/api/appointments", { method: "POST", headers: auth, body: JSON.stringify({ time: "19:30", barber: `Smoke ${smokeRunId}`, client: "Cliente Smoke", service: "Corte", status: "Confirmado", date: "2030-01-02" }) });
+  const reminderAt = new Date(Date.now() + 60 * 60 * 1000);
+  const reminderDate = localDateIso(reminderAt);
+  const reminderTime = `${String(reminderAt.getHours()).padStart(2, "0")}:${String(reminderAt.getMinutes()).padStart(2, "0")}`;
+  const reminderAppointment = await fetchJson("/api/appointments", { method: "POST", headers: auth, body: JSON.stringify({ time: reminderTime, barber: `Smoke ${smokeRunId}`, client: "Cliente Smoke", service: "Corte", status: "Confirmado", date: reminderDate }) });
+  const reminders = await fetchJson("/api/appointments/reminders/auto-run", { method: "POST", headers: auth, body: JSON.stringify({ windowMinutes: 120, limit: 3 }) });
+  if (!reminders.ok || reminders.sent < 1) throw new Error("appointment_reminder_auto_run_failed");
   const directInviteAppointment = await fetchJson("/api/appointments", { method: "POST", headers: auth, body: JSON.stringify({ time: "18:00", barber: "Diego", client: "Vago", service: "Corte", status: "Aberto", open: true, date: "2030-01-02" }) });
   const directInvite = await fetchJson("/api/slot-invites/send", { method: "POST", headers: auth, body: JSON.stringify({ appointmentId: directInviteAppointment.id, clientId: client.id }) });
   if (!directInvite.invite || directInvite.invite.appointmentId !== directInviteAppointment.id || !directInvite.invite.expiresAt) throw new Error("slot_invite_send_failed");
@@ -98,6 +107,10 @@ try {
   const bookingTime = `23:${String(Date.now() % 60).padStart(2, "0")}`;
   await fetchJson("/api/public/appointments", { method: "POST", body: JSON.stringify({ barbershopSlug: "barbearia-alpha", client: "Cliente Site", phone: "5566999999999", service: booking.services[0].name, barber: booking.professionals[0].name, date: bookingDate, time: bookingTime }) }, 400);
   await fetchJson("/api/public/appointments", { method: "POST", body: JSON.stringify({ barbershopSlug: "barbearia-alpha", client: "Cliente Site", phone: "5566999999999", service: booking.services[0].name, barber: booking.professionals[0].name, date: bookingDate, time: bookingTime, privacyAccepted: true, whatsappConsent: true }) });
+  const conflictDate = `2030-03-${String((Date.now() % 20) + 5).padStart(2, "0")}`;
+  await fetchJson("/api/public/appointments", { method: "POST", body: JSON.stringify({ barbershopSlug: "barbearia-alpha", client: "Cliente Conflito", phone: "5566999999988", service: booking.services[0].name, barber: booking.professionals[0].name, date: conflictDate, time: "10:00", privacyAccepted: true, whatsappConsent: true }) });
+  const conflict = await fetchJson("/api/public/appointments", { method: "POST", body: JSON.stringify({ barbershopSlug: "barbearia-alpha", client: "Cliente Conflito 2", phone: "5566999999977", service: booking.services[0].name, barber: booking.professionals[0].name, date: conflictDate, time: "10:00", privacyAccepted: true, whatsappConsent: true }) }, 409);
+  if (!Array.isArray(conflict.alternatives) || !conflict.alternatives.length) throw new Error("public_booking_alternatives_missing");
   const protectedDb = await fetch(`${baseUrl}/data/db.json`); if (protectedDb.status !== 404) throw new Error("db_file_exposed");
   const protectedServer = await fetch(`${baseUrl}/server.mjs`); if (protectedServer.status !== 404) throw new Error("server_file_exposed");
   const protectedTests = await fetch(`${baseUrl}/tests/smoke.mjs`); if (protectedTests.status !== 404) throw new Error("internal_test_exposed");
@@ -108,6 +121,7 @@ try {
   await fetchJson(`/api/appointments/${inviteAppointment.id}`, { method: "DELETE", headers: auth });
   await fetchJson(`/api/appointments/${autoInviteAppointment.id}`, { method: "DELETE", headers: auth });
   await fetchJson(`/api/appointments/${directInviteAppointment.id}`, { method: "DELETE", headers: auth });
+  await fetchJson(`/api/appointments/${reminderAppointment.id}`, { method: "DELETE", headers: auth });
   await fetchJson(`/api/appointments/${appointment.id}`, { method: "DELETE", headers: auth });
   await fetchJson(`/api/clients/${autoClient.id}`, { method: "DELETE", headers: auth });
   await fetchJson(`/api/clients/${client.id}`, { method: "DELETE", headers: auth });

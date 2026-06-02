@@ -905,7 +905,7 @@ function renderSchedule() {
       `;
     })
     .join("")
-    : `<article class="empty-state"><strong>Nenhum horário nestá data</strong><span>Crie um agendamento manualmente ou libere horários pela página pública.</span></article>`;
+    : `<article class="empty-state"><strong>Nenhum horário nesta data</strong><span>Crie um agendamento manualmente ou libere horários pela página pública.</span></article>`;
 
   document.querySelectorAll("[data-fill-slot]").forEach((button) => {
     button.addEventListener("click", () => fillSlot(Number(button.dataset.fillSlot)));
@@ -1902,11 +1902,20 @@ function renderReports() {
   if (!reportGrid || !campaignReportList) return;
   const campaigns = state.campaigns || [];
   const appointments = state.appointments || [];
+  const slotInvites = (state.messageHistory || []).filter((message) => message.type === "slot_invite");
   const paidPix = (state.pixCharges || []).filter((charge) => String(charge.status || "").toLowerCase().includes("pago"));
   const sent = campaigns.reduce((sum, item) => sum + Number(item.sent || 0), 0);
   const responses = campaigns.reduce((sum, item) => sum + Number(item.responses || 0), 0);
   const bookings = campaigns.reduce((sum, item) => sum + Number(item.bookings || 0), 0);
   const revenue = campaigns.reduce((sum, item) => sum + Number(item.revenue || 0), 0);
+  const funnelSent = slotInvites.length;
+  const funnelResponses = slotInvites.filter((message) => message.respondedAt || ["Cliente respondeu", "Agendado", "Aguardando Pix", "Recusado"].includes(message.status)).length;
+  const funnelBooked = slotInvites.filter((message) => ["Agendado", "Aguardando Pix"].includes(message.status)).length;
+  const funnelDeclined = slotInvites.filter((message) => message.status === "Recusado").length;
+  const funnelNoResponse = slotInvites.filter((message) => ["Sem resposta", "Convite enviado", "Sandbox: pronto", "Pronto para envio", "Aguardando resposta"].includes(message.status)).length;
+  const funnelRevenue = slotInvites
+    .filter((message) => ["Agendado", "Aguardando Pix"].includes(message.status))
+    .reduce((sum, message) => sum + Number(message.value || 0), 0);
   const confirmedRevenue = appointments
     .filter((item) => !item.open)
     .reduce((sum, appointment) => {
@@ -1916,10 +1925,17 @@ function renderReports() {
   const pixRevenue = paidPix.reduce((sum, charge) => sum + Number(charge.amount || 0), 0);
   const responseRate = sent  ?Math.round((responses / sent) * 100) : 0;
   const bookingRate = sent  ?Math.round((bookings / sent) * 100) : 0;
+  const inviteResponseRate = funnelSent ? Math.round((funnelResponses / funnelSent) * 100) : 0;
+  const inviteBookingRate = funnelSent ? Math.round((funnelBooked / funnelSent) * 100) : 0;
   const openSlots = appointments.filter((item) => item.open).length;
   const recoveredSlots = appointments.filter((item) => item.recovered).length;
   const roi = revenue  ?(revenue / 197).toFixed(1) : "0.0";
   const cards = [
+    ["Convites enviados", String(funnelSent), "Total de encaixes disparados"],
+    ["Respostas recebidas", `${inviteResponseRate}%`, `${funnelResponses}/${funnelSent} clientes responderam`],
+    ["Agendados pelo funil", `${inviteBookingRate}%`, `${funnelBooked}/${funnelSent} viraram horário`],
+    ["Sem resposta", String(funnelNoResponse), `${funnelDeclined} recusaram o convite`],
+    ["Receita recuperada no funil", money.format(funnelRevenue), "Ticket dos convites agendados"],
     ["Receita recuperada", money.format(revenue), "Baseada em campanhas registradas"],
     ["Receita confirmada", money.format(confirmedRevenue), "Soma dos serviços agendados"],
     ["Sinais Pix pagos", money.format(pixRevenue), `${paidPix.length} pagamentos marcados manualmente`],
@@ -2064,6 +2080,26 @@ document.querySelector("#autoRunInvites")?.addEventListener("click", async () =>
   await hydrateStateFromApi();
   renderAll();
   showToast(result.sent ? `${result.sent} convite(s) preparado(s) pela automação.` : "Nenhum cliente elegível encontrado para os horários vagos.");
+});
+
+document.querySelector("#autoRunReminders")?.addEventListener("click", async () => {
+  if (!apiEnabled) {
+    showToast("Lembretes automáticos precisam do backend ativo.");
+    return;
+  }
+  const response = await apiFetch("/api/appointments/reminders/auto-run", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ windowMinutes: 180, limit: 10 }),
+  }).catch(() => null);
+  if (!response?.ok) {
+    showToast("Não consegui enviar os lembretes agora.");
+    return;
+  }
+  const result = await response.json();
+  await hydrateStateFromApi();
+  renderAll();
+  showToast(result.sent ? `${result.sent} lembrete(s) preparado(s) para os próximos horários.` : "Nenhum horário elegível para lembrete agora.");
 });
 
 document.querySelector("#closeInviteModal").addEventListener("click", closeInviteModal);
@@ -2228,7 +2264,7 @@ document.querySelector("#appointmentForm").addEventListener("submit", async (eve
     open: String(formData.get("status") || "Confirmado") === "Aberto",
   };
   if (!appointment.date || !appointment.time || !appointment.barber || !appointment.client) {
-    showToast("Informé data, horário, barbeiro e cliente.");
+    showToast("Informe data, horário, barbeiro e cliente.");
     return;
   }
   const editIndex = formData.get("editIndex");

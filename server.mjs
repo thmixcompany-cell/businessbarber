@@ -371,6 +371,12 @@ function appointmentDate(appointment) { return appointment.date || appointment.d
 function appointmentConflicts(left, right) {
   return appointmentDate(left) === appointmentDate(right) && String(left.time || "") === String(right.time || "") && String(left.barber || "") === String(right.barber || "") && !left.open && !["Cancelado", "Recusado"].includes(left.status);
 }
+function appointmentTimeMs(appointment) {
+  const date = appointmentDate(appointment);
+  const time = String(appointment?.time || "00:00");
+  const parsed = new Date(`${date}T${time.length === 5 ? `${time}:00` : time}`);
+  return parsed.getTime();
+}
 function normalizePhone(value) { return String(value || "").replace(/\D/g, "").slice(0, 15); }
 function validPhone(value) { const phone = normalizePhone(value); return phone.length >= 10 && phone.length <= 15; }
 function sanitizeText(value, max = 120) { return String(value || "").trim().replace(/[<>]/g, "").slice(0, max); }
@@ -535,6 +541,26 @@ function publicBookingState(db, slug) {
   };
 }
 
+const publicBaseSlots = ["09:00", "10:00", "11:30", "14:00", "15:30", "16:30", "18:00"];
+
+function publicAvailableAlternatives(db, shop, { date, barber, time }) {
+  const shopId = shop.id;
+  const openTime = shop.openTime || "09:00";
+  const closeTime = shop.closeTime || "19:00";
+  const unavailable = new Set(scope(db.appointments, shopId)
+    .filter((item) => appointmentDate(item) === date && item.barber === barber && !item.open && !["Cancelado", "Recusado"].includes(item.status))
+    .map((item) => item.time));
+  return publicBaseSlots
+    .filter((slot) => slot >= openTime && slot <= closeTime && slot !== time && !unavailable.has(slot))
+    .sort((a, b) => Math.abs(minutesFromTime(a) - minutesFromTime(time)) - Math.abs(minutesFromTime(b) - minutesFromTime(time)))
+    .slice(0, 2);
+}
+
+function minutesFromTime(time) {
+  const [hour, minute] = String(time || "00:00").split(":").map(Number);
+  return (hour || 0) * 60 + (minute || 0);
+}
+
 function parseClientCsv(csv, shopId) {
   const lines = String(csv || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const [headerLine, ...rows] = lines;
@@ -619,6 +645,18 @@ function customerMessages(db, shopId, appointment = {}) {
   };
 }
 
+function unavailableSlotMessage(db, shopId, appointment = {}) {
+  const shop = db.barbershops.find((item) => item.id === shopId) || {};
+  const alternatives = publicAvailableAlternatives(db, shop, {
+    date: appointmentDate(appointment),
+    barber: appointment.barber || "",
+    time: appointment.time || "",
+  });
+  if (!alternatives.length) return customerMessages(db, shopId, appointment).unavailable;
+  const options = alternatives.length === 1 ? alternatives[0] : `${alternatives[0]} ou ${alternatives[1]}`;
+  return `Esse horário acabou de ser preenchido. Tenho ${options} com ${appointment.barber || "a equipe"} no mesmo dia. Se um deles servir, responda com o horário.`;
+}
+
 function buildSlotInviteText(db, shopId, appointment, client) {
   const shop = db.barbershops.find((item) => item.id === shopId) || {};
   const service = appointment.service && appointment.service !== "Corte ou barba" ? ` para ${appointment.service}` : "";
@@ -636,6 +674,26 @@ async function sendWhatsAppSlotInvite({ db, shopId, to, appointment, client }) {
     language: config.templateLanguage || whatsappTemplateLanguage,
     variables: [
       client.name || "cliente",
+      shop.name || "barbearia",
+      formatCustomerDate(appointmentDate(appointment)),
+      appointment.time || "",
+      appointment.barber || "profissional",
+      appointment.service || "serviço",
+    ],
+  });
+}
+
+async function sendWhatsAppAppointmentReminder({ db, shopId, to, appointment, clientName }) {
+  const config = whatsappInternalConfig(db, shopId);
+  const shop = db.barbershops.find((item) => item.id === shopId) || {};
+  return sendWhatsAppTemplate({
+    db,
+    shopId,
+    to,
+    templateName: config.reminderTemplate || whatsappReminderTemplate,
+    language: config.templateLanguage || whatsappTemplateLanguage,
+    variables: [
+      clientName || appointment.client || "cliente",
       shop.name || "barbearia",
       formatCustomerDate(appointmentDate(appointment)),
       appointment.time || "",
@@ -736,6 +794,55 @@ async function createAndSendSlotInvite(db, shopId, { appointmentId = "", clientI
   return { ok: sendResult.status !== "failed", invite, simulated: Boolean(sendResult.simulated), error: sendResult.error?.details?.error?.message || "" };
 }
 
+function reminderPhoneForAppointment(db, shopId, appointment) {
+  if (normalizePhone(appointment.phone)) return normalizePhone(appointment.phone);
+  const client = scope(db.clients, shopId).find((item) => item.name === appointment.client);
+  return normalizePhone(client?.phone);
+}
+
+function appointmentAlreadyReminded(db, shopId, appointmentId) {
+  return scope(db.messageHistory, shopId).some((message) => message.type === "appointment_reminder" && message.appointmentId === appointmentId && !["Falha no envio", "Cancelado"].includes(message.status));
+}
+
+async function createAndSendAppointmentReminder(db, shopId, appointment, actor = "system") {
+  const phone = reminderPhoneForAppointment(db, shopId, appointment);
+  if (!phone) return { ok: false, error: "appointment_phone_not_found", appointmentId: appointment.id || "" };
+  if (appointmentAlreadyReminded(db, shopId, appointment.id || "")) return { ok: false, skipped: true, error: "reminder_already_sent", appointmentId: appointment.id || "" };
+  const sendResult = await sendWhatsAppAppointmentReminder({ db, shopId, to: phone, appointment, clientName: appointment.client }).catch((error) => ({ simulated: false, status: "failed", error }));
+  const reminder = withTenant({
+    id: makeId("reminder"),
+    type: "appointment_reminder",
+    appointmentId: appointment.id || "",
+    client: appointment.client,
+    phone,
+    status: sendResult.status === "failed" ? "Falha no envio" : (sendResult.simulated ? "Sandbox: lembrete pronto" : "Lembrete enviado"),
+    providerMessageId: sendResult.messageId || "",
+    time: appointment.time,
+    barber: appointment.barber,
+    service: appointment.service,
+    date: appointmentDate(appointment),
+    createdAt: new Date().toISOString(),
+  }, shopId);
+  db.messageHistory.unshift(reminder);
+  addAudit(db, "appointment_reminder.sent", actor, { reminderId: reminder.id, appointmentId: appointment.id || "", simulated: Boolean(sendResult.simulated), status: reminder.status }, shopId);
+  return { ok: sendResult.status !== "failed", reminder, simulated: Boolean(sendResult.simulated), error: sendResult.error?.details?.error?.message || "" };
+}
+
+function reminderCandidates(db, shopId, windowMinutes, limit) {
+  const now = Date.now();
+  const max = now + windowMinutes * 60 * 1000;
+  const blockedStatuses = new Set(["Cancelado", "Recusado", "Faltou", "Sem resposta"]);
+  return scope(db.appointments, shopId)
+    .filter((appointment) => appointment.id && !appointment.open && !blockedStatuses.has(appointment.status || ""))
+    .filter((appointment) => {
+      const scheduledAt = appointmentTimeMs(appointment);
+      return Number.isFinite(scheduledAt) && scheduledAt >= now && scheduledAt <= max;
+    })
+    .filter((appointment) => !appointmentAlreadyReminded(db, shopId, appointment.id))
+    .sort((a, b) => appointmentTimeMs(a) - appointmentTimeMs(b))
+    .slice(0, limit);
+}
+
 function extractWhatsAppInboundMessages(body) {
   return (body.entry || []).flatMap((entry) => entry.changes || []).flatMap((change) => {
     const value = change?.value || {};
@@ -789,7 +896,7 @@ async function processSlotInviteReply(db, shopId, inbound) {
   if (!appointment || !appointment.open) {
     invite.status = "Horário indisponível";
     addAudit(db, "slot_invite.slot_unavailable", "whatsapp", { inviteId: invite.id, phone: maskSecret(inbound.from) }, shopId);
-    await sendWhatsAppText({ db, shopId, to: inbound.from, text: customerMessages(db, shopId, appointment || {}).unavailable }).catch(() => null);
+    await sendWhatsAppText({ db, shopId, to: inbound.from, text: unavailableSlotMessage(db, shopId, appointment || {}) }).catch(() => null);
     return { matched: true, intent, status: invite.status };
   }
 
@@ -926,7 +1033,10 @@ async function handleApi(req, res, url) {
     if (!serviceAllowed || !barberAllowed || !date || !time || !validPhone(body.phone) || !sanitizeText(body.client, 100)) return sendJson(res, 400, { error: "invalid_booking" });
     if (date < new Date().toISOString().slice(0, 10)) return sendJson(res, 400, { error: "invalid_date" });
     const appointment = withTenant({ id: makeId("appt"), time, barber: sanitizeText(body.barber), client: sanitizeText(body.client, 100), phone: normalizePhone(body.phone), service: sanitizeText(body.service), status: "Solicitado", depositRequired: Boolean(state.deposit.required), depositStatus: state.deposit.required ? "aguardando_pagamento" : "nao_exigido", open: false, source: "public-booking", date, whatsappConsent: true, privacyAcceptedAt: new Date().toISOString(), createdAt: new Date().toISOString() }, shop.id);
-    if (scope(db.appointments, shop.id).some((item) => appointmentConflicts(item, appointment))) return sendJson(res, 409, { error: "slot_unavailable" });
+    if (scope(db.appointments, shop.id).some((item) => appointmentConflicts(item, appointment))) {
+      const alternatives = publicAvailableAlternatives(db, shop, { date, barber: appointment.barber, time });
+      return sendJson(res, 409, { error: "slot_unavailable", alternatives });
+    }
     db.appointments.push(appointment); addAudit(db, "public_booking.requested", "public", { appointmentId: appointment.id }, shop.id); await writeDb(db);
     return sendJson(res, 201, { id: appointment.id, status: appointment.status, message: "Solicitação enviada. Aguarde confirmação pelo WhatsApp." });
   }
@@ -1054,6 +1164,20 @@ async function handleApi(req, res, url) {
     addAudit(db, "slot_invite.auto_run", actor, { attempted: openSlots.length, sent: results.filter((item) => item.ok).length }, shopId);
     await writeDb(db);
     return sendJson(res, 200, { ok: true, attempted: openSlots.length, sent: results.filter((item) => item.ok).length, results });
+  }
+  if (pathname === "/api/appointments/reminders/auto-run" && req.method === "POST") {
+    if (isBarber(user)) return sendJson(res, 403, { error: "manager_required" });
+    const body = await readBody(req);
+    const limit = Math.max(1, Math.min(20, Number(body.limit || 10)));
+    const windowMinutes = Math.max(15, Math.min(24 * 60, Number(body.windowMinutes || 180)));
+    const appointments = reminderCandidates(db, shopId, windowMinutes, limit);
+    const results = [];
+    for (const appointment of appointments) {
+      results.push(await createAndSendAppointmentReminder(db, shopId, appointment, actor));
+    }
+    addAudit(db, "appointment_reminder.auto_run", actor, { attempted: appointments.length, sent: results.filter((item) => item.ok).length, windowMinutes }, shopId);
+    await writeDb(db);
+    return sendJson(res, 200, { ok: true, attempted: appointments.length, sent: results.filter((item) => item.ok).length, results });
   }
 
   if (pathname === "/api/integrations" && req.method === "GET") return sendJson(res, 200, integrationFor(db, shopId));

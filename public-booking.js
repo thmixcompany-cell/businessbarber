@@ -47,7 +47,19 @@ document.querySelector("#publicBookingForm").addEventListener("submit", async (e
   if (!payload.time) { feedback.textContent = "Escolha um horário disponível."; return; }
   try {
     const response = await fetch("/api/public/appointments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-    if (response.status === 409) { feedback.textContent = "Esse horário acabou de ser solicitado. Escolha outro."; await hydrateBooking(); return; }
+    if (response.status === 409) {
+      const data = await response.json().catch(() => ({}));
+      await hydrateBooking();
+      const alternatives = Array.isArray(data.alternatives) ? data.alternatives.filter(Boolean) : [];
+      if (alternatives.length) {
+        const select = document.querySelector("#publicTime");
+        select.value = alternatives[0];
+        feedback.textContent = `Esse horário acabou de ser solicitado. Tenho ${alternatives.join(" ou ")} disponível; já deixei uma alternativa selecionada para você.`;
+      } else {
+        feedback.textContent = "Esse horário acabou de ser solicitado e não encontrei outro próximo com esse profissional. Escolha outro dia ou outro profissional.";
+      }
+      return;
+    }
     if (!response.ok) { const data = await response.json().catch(() => ({})); feedback.textContent = data.error === "consent_required" ? "Aceite os termos e o contato por WhatsApp para continuar." : "Revise seus dados e tente novamente."; return; }
     feedback.textContent = "Pedido recebido! A equipe confirmará seu horário pelo WhatsApp."; event.currentTarget.reset(); await hydrateBooking();
   } catch { feedback.textContent = "Não foi possível enviar agora. Entre em contato com a barbearia."; }
