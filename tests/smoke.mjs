@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { createHmac } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 
 const port = 4199;
@@ -71,6 +72,15 @@ try {
   await fetchJson(`/api/appointments/${otherAppointment.id}`, { method: "PUT", headers: barberAuth, body: JSON.stringify({ status: "Finalizado" }) }, 403);
   const barberUpdate = await fetchJson(`/api/appointments/${barberAppointment.id}`, { method: "PUT", headers: barberAuth, body: JSON.stringify({ status: "Finalizado", client: "Cliente Alterado" }) });
   if (barberUpdate.status !== "Finalizado" || barberUpdate.client !== "Cliente Diego") throw new Error("barber_update_permissions_invalid");
+  const inviteAppointment = await fetchJson("/api/appointments", { method: "POST", headers: auth, body: JSON.stringify({ time: "21:00", barber: "Diego", client: "Vago", service: "Corte", status: "Aberto", open: true, date: "2030-01-04" }) });
+  const invite = { id: `invite-${smokeRunId}`, type: "slot_invite", appointmentId: inviteAppointment.id, client: "Cliente Convite", phone: "559999900456", status: "Convite enviado", time: "21:00", barber: "Diego", service: "Corte", createdAt: new Date().toISOString(), barbershopId: "shop-alpha" };
+  await fetchJson("/api/state", { method: "PUT", headers: auth, body: JSON.stringify({ messageHistory: [invite] }) });
+  const webhookBody = JSON.stringify({ entry: [{ changes: [{ value: { metadata: { phone_number_id: "123456789012345" }, messages: [{ id: `wamid.${smokeRunId}`, from: "559999900456", timestamp: "1893456000", type: "text", text: { body: "Sim" } }] } }] }] });
+  const webhookSignature = `sha256=${createHmac("sha256", "app_secret_teste").update(webhookBody).digest("hex")}`;
+  await fetchJson("/api/webhooks/whatsapp", { method: "POST", headers: { "x-hub-signature-256": webhookSignature }, body: webhookBody });
+  const afterWebhook = await fetchJson("/api/appointments", { headers: auth });
+  const bookedByWebhook = afterWebhook.find((item) => item.id === inviteAppointment.id);
+  if (!bookedByWebhook || bookedByWebhook.open || bookedByWebhook.status !== "Recuperado" || bookedByWebhook.client !== "Cliente Convite") throw new Error("webhook_auto_booking_failed");
   const campaign = await fetchJson("/api/campaigns", { method: "POST", headers: auth, body: JSON.stringify({ name: "Smoke retorno", segment: "Teste", sent: 0, responses: 0, bookings: 0, revenue: 0, recipients: ["Cliente Smoke"] }) });
   await fetchJson("/api/integrations/whatsapp/test", { method: "POST", headers: auth, body: JSON.stringify({ to: "559999900123", name: "Cliente Smoke" }) });
   const booking = await fetchJson("/api/public/booking?barbearia=barbearia-alpha");
@@ -86,6 +96,7 @@ try {
   await fetchJson(`/api/campaigns/${campaign.id}`, { method: "DELETE", headers: auth });
   await fetchJson(`/api/appointments/${otherAppointment.id}`, { method: "DELETE", headers: auth });
   await fetchJson(`/api/appointments/${barberAppointment.id}`, { method: "DELETE", headers: auth });
+  await fetchJson(`/api/appointments/${inviteAppointment.id}`, { method: "DELETE", headers: auth });
   await fetchJson(`/api/appointments/${appointment.id}`, { method: "DELETE", headers: auth });
   await fetchJson(`/api/clients/${client.id}`, { method: "DELETE", headers: auth });
   console.log("Smoke test V2 passou: segurança, isolamento, LGPD, WhatsApp sandbox, agendamento público, CRUD e páginas OK.");

@@ -663,6 +663,7 @@ function addInviteHistory(status, shouldBook = false) {
     link: buildWhatsAppLink(pendingInvite.client.phone, message),
     status,
     appointmentIndex: pendingInvite.appointmentIndex,
+    appointmentId: pendingInvite.slot.id || "",
     time: pendingInvite.slot.time,
     barber: pendingInvite.slot.barber,
     service: pendingInvite.slot.service,

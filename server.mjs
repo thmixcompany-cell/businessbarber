@@ -555,6 +555,100 @@ async function sendWhatsAppTemplate({ db, shopId, to, templateName, language, va
   return { simulated: false, status: "sent", messageId: result.messages?.[0]?.id || null };
 }
 
+async function sendWhatsAppText({ db, shopId, to, text }) {
+  const config = whatsappInternalConfig(db, shopId);
+  if (config.mode !== "production" || !config.accessToken || !config.phoneNumberId) return { simulated: true, status: "sandbox", messageId: null };
+  const payload = { messaging_product: "whatsapp", to: normalizePhone(to), type: "text", text: { preview_url: false, body: String(text || "").slice(0, 4000) } };
+  const response = await fetch(`https://graph.facebook.com/${graphVersion}/${config.phoneNumberId}/messages`, { method: "POST", headers: { Authorization: `Bearer ${config.accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) { const error = new Error("whatsapp_text_failed"); error.details = result; throw error; }
+  return { simulated: false, status: "sent", messageId: result.messages?.[0]?.id || null };
+}
+
+function normalizeReplyText(text) {
+  return String(text || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+}
+
+function classifyWhatsAppReply(text) {
+  const normalized = normalizeReplyText(text);
+  if (!normalized) return "unknown";
+  if (/\b(sim|s|quero|pode|reserva|reservar|confirmo|confirmar|bora|fechado|ok|pode marcar|marca)\b/.test(normalized)) return "positive";
+  if (/\b(nao|n|hoje nao|depois|outro dia|cancelar|nao posso|indisponivel)\b/.test(normalized)) return "negative";
+  return "ambiguous";
+}
+
+function extractWhatsAppInboundMessages(body) {
+  return (body.entry || []).flatMap((entry) => entry.changes || []).flatMap((change) => {
+    const value = change?.value || {};
+    const metadata = value.metadata || {};
+    return (value.messages || []).map((message) => ({
+      from: normalizePhone(message.from),
+      text: message.text?.body || message.button?.text || message.interactive?.button_reply?.title || message.interactive?.list_reply?.title || "",
+      messageId: message.id || "",
+      phoneNumberId: metadata.phone_number_id || "",
+      timestamp: message.timestamp || "",
+    }));
+  }).filter((message) => message.from && message.text);
+}
+
+function findPendingSlotInvite(db, shopId, phone) {
+  const now = Date.now();
+  const pendingStatuses = new Set(["Convite enviado", "Pronto para envio", "Aguardando resposta", "enviado", "simulado"]);
+  return scope(db.messageHistory, shopId)
+    .filter((message) => message.type === "slot_invite")
+    .filter((message) => normalizePhone(message.phone) === normalizePhone(phone))
+    .filter((message) => pendingStatuses.has(message.status || ""))
+    .filter((message) => !message.expiresAt || new Date(message.expiresAt).getTime() >= now)
+    .sort((a, b) => new Date(b.createdAt || b.at || 0).getTime() - new Date(a.createdAt || a.at || 0).getTime())[0] || null;
+}
+
+async function processSlotInviteReply(db, shopId, inbound) {
+  const invite = findPendingSlotInvite(db, shopId, inbound.from);
+  const intent = classifyWhatsAppReply(inbound.text);
+  if (!invite) return { matched: false, intent };
+
+  invite.responseText = inbound.text;
+  invite.responseIntent = intent;
+  invite.respondedAt = new Date().toISOString();
+  invite.providerResponseId = inbound.messageId;
+
+  if (intent === "negative") {
+    invite.status = "Recusado";
+    addAudit(db, "slot_invite.declined", "whatsapp", { inviteId: invite.id, phone: maskSecret(inbound.from) }, shopId);
+    await sendWhatsAppText({ db, shopId, to: inbound.from, text: "Tudo bem. Quando quiser outro horário, é só chamar por aqui." }).catch(() => null);
+    return { matched: true, intent, status: invite.status };
+  }
+
+  if (intent !== "positive") {
+    invite.status = "Cliente respondeu";
+    addAudit(db, "slot_invite.needs_review", "whatsapp", { inviteId: invite.id, phone: maskSecret(inbound.from), intent }, shopId);
+    await sendWhatsAppText({ db, shopId, to: inbound.from, text: "Te respondo por aqui para confirmar o melhor horário certinho." }).catch(() => null);
+    return { matched: true, intent, status: invite.status };
+  }
+
+  const appointment = scope(db.appointments, shopId).find((item, index) => (invite.appointmentId && item.id === invite.appointmentId) || (!invite.appointmentId && String(index) === String(invite.appointmentIndex)));
+  if (!appointment || !appointment.open) {
+    invite.status = "Horário indisponível";
+    addAudit(db, "slot_invite.slot_unavailable", "whatsapp", { inviteId: invite.id, phone: maskSecret(inbound.from) }, shopId);
+    await sendWhatsAppText({ db, shopId, to: inbound.from, text: "Esse horário acabou de ser ocupado. Vou verificar outra opção para você." }).catch(() => null);
+    return { matched: true, intent, status: invite.status };
+  }
+
+  appointment.client = invite.client || "Cliente WhatsApp";
+  appointment.phone = inbound.from;
+  appointment.status = "Recuperado";
+  appointment.open = false;
+  appointment.recovered = true;
+  appointment.recoveredAt = new Date().toISOString();
+  appointment.source = "whatsapp_auto_reply";
+  invite.status = "Agendado";
+  invite.bookedAt = appointment.recoveredAt;
+  invite.appointmentId = appointment.id || invite.appointmentId || "";
+  addAudit(db, "slot_invite.auto_booked", "whatsapp", { inviteId: invite.id, appointmentId: appointment.id || "", phone: maskSecret(inbound.from) }, shopId);
+  await sendWhatsAppText({ db, shopId, to: inbound.from, text: `Perfeito. Seu horário ficou reservado para ${appointmentDate(appointment)} às ${appointment.time} com ${appointment.barber}.` }).catch(() => null);
+  return { matched: true, intent, status: invite.status, appointmentId: appointment.id || "" };
+}
+
 function verifyWhatsAppSignatureWithSecret(req, rawBody, appSecret) {
   if (!appSecret) return false;
   const signature = String(req.headers["x-hub-signature-256"] || "");
@@ -609,7 +703,14 @@ async function handleWebhook(req, res, url) {
     .map((change) => change?.value?.metadata?.phone_number_id)
     .filter(Boolean);
   const shopId = phoneNumberIds.map((id) => findShopIdByWhatsAppPhoneNumberId(db, id)).find(Boolean) || null;
-  addAudit(db, "whatsapp.webhook_received", "meta", { entries: Array.isArray(body.entry) ? body.entry.length : 0, phoneNumberIds }, shopId);
+  const inboundMessages = extractWhatsAppInboundMessages(body);
+  const replyResults = [];
+  if (shopId && inboundMessages.length) {
+    for (const inbound of inboundMessages) {
+      replyResults.push(await processSlotInviteReply(db, shopId, inbound));
+    }
+  }
+  addAudit(db, "whatsapp.webhook_received", "meta", { entries: Array.isArray(body.entry) ? body.entry.length : 0, phoneNumberIds, inboundMessages: inboundMessages.length, autoReplies: replyResults.filter((item) => item.matched).length }, shopId);
   await writeDb(db);
   return sendJson(res, 200, { received: true });
 }
