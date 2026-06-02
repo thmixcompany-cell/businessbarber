@@ -39,6 +39,8 @@ try {
         mode: "sandbox",
         defaultTemplate: "retorno_cliente_sumido",
         templateLanguage: "pt_BR",
+        slotInviteTemplate: "encaixe_horario_vago",
+        reminderTemplate: "lembrete_agendamento",
         phoneNumberId: "123456789012345",
         accessToken: "EAATEST_SECRET_TOKEN",
         appSecret: "app_secret_teste",

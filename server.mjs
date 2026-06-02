@@ -27,6 +27,8 @@ const whatsappAppSecret = process.env.WHATSAPP_APP_SECRET || "";
 const whatsappMode = (process.env.WHATSAPP_MODE || "sandbox").toLowerCase();
 const whatsappDefaultTemplate = process.env.WHATSAPP_DEFAULT_TEMPLATE || "retorno_cliente_sumido";
 const whatsappTemplateLanguage = process.env.WHATSAPP_TEMPLATE_LANGUAGE || "pt_BR";
+const whatsappSlotInviteTemplate = process.env.WHATSAPP_SLOT_INVITE_TEMPLATE || "encaixe_horario_vago";
+const whatsappReminderTemplate = process.env.WHATSAPP_REMINDER_TEMPLATE || "lembrete_agendamento";
 const metaAppId = process.env.META_APP_ID || "";
 const metaAppSecret = process.env.META_APP_SECRET || whatsappAppSecret;
 const metaBusinessId = process.env.META_BUSINESS_ID || "";
@@ -188,6 +190,8 @@ function whatsappInternalConfig(db, shopId) {
     mode: whatsapp.mode || whatsappMode,
     defaultTemplate: whatsapp.defaultTemplate || whatsappDefaultTemplate,
     templateLanguage: whatsapp.templateLanguage || whatsappTemplateLanguage,
+    slotInviteTemplate: whatsapp.slotInviteTemplate || whatsappSlotInviteTemplate,
+    reminderTemplate: whatsapp.reminderTemplate || whatsappReminderTemplate,
     businessAccountId: whatsapp.businessAccountId || whatsapp.wabaId || "",
     wabaId: whatsapp.wabaId || whatsapp.businessAccountId || "",
     displayPhoneNumber: whatsapp.displayPhoneNumber || "",
@@ -211,6 +215,8 @@ function publicWhatsappConfig(db, shopId) {
     mode: config.mode,
     defaultTemplate: config.defaultTemplate,
     templateLanguage: config.templateLanguage,
+    slotInviteTemplate: config.slotInviteTemplate,
+    reminderTemplate: config.reminderTemplate,
     businessAccountIdConfigured: Boolean(config.businessAccountId),
     wabaIdConfigured: Boolean(config.wabaId),
     tokenConfigured: Boolean(config.accessToken),
@@ -619,6 +625,26 @@ function buildSlotInviteText(db, shopId, appointment, client) {
   return `Oi, ${client.name}! Aqui é da ${shop.name || "barbearia"}. Abriu um horário ${formatCustomerDate(appointmentDate(appointment))} às ${appointment.time} com ${appointment.barber}${service}. Quer que eu reserve para você? Responda "sim" para confirmar.`;
 }
 
+async function sendWhatsAppSlotInvite({ db, shopId, to, appointment, client }) {
+  const config = whatsappInternalConfig(db, shopId);
+  const shop = db.barbershops.find((item) => item.id === shopId) || {};
+  return sendWhatsAppTemplate({
+    db,
+    shopId,
+    to,
+    templateName: config.slotInviteTemplate || whatsappSlotInviteTemplate,
+    language: config.templateLanguage || whatsappTemplateLanguage,
+    variables: [
+      client.name || "cliente",
+      shop.name || "barbearia",
+      formatCustomerDate(appointmentDate(appointment)),
+      appointment.time || "",
+      appointment.barber || "profissional",
+      appointment.service || "serviço",
+    ],
+  });
+}
+
 function recentInviteForClient(db, shopId, phone, hours = 24) {
   const cutoff = Date.now() - hours * 60 * 60 * 1000;
   return scope(db.messageHistory, shopId).some((message) => (
@@ -687,7 +713,7 @@ async function createAndSendSlotInvite(db, shopId, { appointmentId = "", clientI
   if (!client) return { ok: false, error: "eligible_client_not_found" };
 
   const messageText = buildSlotInviteText(db, shopId, appointment, client);
-  const sendResult = await sendWhatsAppText({ db, shopId, to: client.phone, text: messageText }).catch((error) => ({ simulated: false, status: "failed", error }));
+  const sendResult = await sendWhatsAppSlotInvite({ db, shopId, to: client.phone, appointment, client }).catch((error) => ({ simulated: false, status: "failed", error }));
   const invite = withTenant({
     id: makeId("invite"),
     type: "slot_invite",
@@ -726,7 +752,7 @@ function extractWhatsAppInboundMessages(body) {
 
 function findPendingSlotInvite(db, shopId, phone) {
   const now = Date.now();
-  const pendingStatuses = new Set(["Convite enviado", "Pronto para envio", "Aguardando resposta", "enviado", "simulado"]);
+  const pendingStatuses = new Set(["Convite enviado", "Pronto para envio", "Aguardando resposta", "Sandbox: pronto", "enviado", "simulado"]);
   return scope(db.messageHistory, shopId)
     .filter((message) => message.type === "slot_invite")
     .filter((message) => normalizePhone(message.phone) === normalizePhone(phone))
@@ -1089,6 +1115,8 @@ async function handleApi(req, res, url) {
         mode: "production",
         defaultTemplate: previous.defaultTemplate || whatsappDefaultTemplate,
         templateLanguage: previous.templateLanguage || whatsappTemplateLanguage,
+        slotInviteTemplate: previous.slotInviteTemplate || whatsappSlotInviteTemplate,
+        reminderTemplate: previous.reminderTemplate || whatsappReminderTemplate,
         status: "conectado_meta",
         embeddedSignupConnectedAt: new Date().toISOString(),
         lastTestAt: previous.lastTestAt || "",
@@ -1129,6 +1157,8 @@ async function handleApi(req, res, url) {
         mode: incomingWhatsapp.mode || currentPrivate.mode || currentPublic.whatsapp.mode,
         defaultTemplate: sanitizeText(incomingWhatsapp.defaultTemplate || currentPrivate.defaultTemplate || currentPublic.whatsapp.defaultTemplate),
         templateLanguage: sanitizeText(incomingWhatsapp.templateLanguage || currentPrivate.templateLanguage || currentPublic.whatsapp.templateLanguage, 20),
+        slotInviteTemplate: sanitizeText(incomingWhatsapp.slotInviteTemplate || currentPrivate.slotInviteTemplate || currentPublic.whatsapp.slotInviteTemplate || whatsappSlotInviteTemplate),
+        reminderTemplate: sanitizeText(incomingWhatsapp.reminderTemplate || currentPrivate.reminderTemplate || currentPublic.whatsapp.reminderTemplate || whatsappReminderTemplate),
         status: currentPrivate.status || currentPublic.whatsapp.status,
         lastTestAt: currentPrivate.lastTestAt || "",
       },

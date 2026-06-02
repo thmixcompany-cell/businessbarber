@@ -106,6 +106,8 @@ const defaultState = {
       credentialSource: "none",
       defaultTemplate: "retorno_cliente_sumido",
       templateLanguage: "pt_BR",
+      slotInviteTemplate: "encaixe_horario_vago",
+      reminderTemplate: "lembrete_agendamento",
       status: "simulado",
       lastTestAt: "",
       embeddedSignupReady: false,
@@ -1608,6 +1610,8 @@ function renderIntegrations() {
     whatsappMode: whatsapp.mode || "sandbox",
     whatsappTemplate: whatsapp.defaultTemplate || "retorno_cliente_sumido",
     whatsappTemplateLanguage: whatsapp.templateLanguage || "pt_BR",
+    whatsappSlotInviteTemplate: whatsapp.slotInviteTemplate || "encaixe_horario_vago",
+    whatsappReminderTemplate: whatsapp.reminderTemplate || "lembrete_agendamento",
     pixProvider: pix.provider || "manual_pix",
     pixMode: pix.mode || "sandbox",
     pixKey: pix.key || "",
@@ -1640,12 +1644,13 @@ function renderIntegrations() {
     : (whatsapp.embeddedSignupReady ? "Meta pronta para conectar" : "Meta pendente no servidor");
   const whatsappSecurityState = whatsapp.appSecretConfigured ? "webhook com assinatura" : "App Secret pendente";
   const whatsappTemplateState = whatsapp.defaultTemplate ? `template ${whatsapp.defaultTemplate} (${whatsapp.templateLanguage || "pt_BR"})` : "template padrão";
+  const whatsappAutomationTemplates = `encaixe ${whatsapp.slotInviteTemplate || "encaixe_horario_vago"} · lembrete ${whatsapp.reminderTemplate || "lembrete_agendamento"}`;
 
   integrationStatus.innerHTML = `
     <article class="integration-status-card">
       <strong>WhatsApp</strong>
       <span>Status: ${whatsapp.status || "simulado"}</span>
-      <small>${whatsapp.tokenConfigured && whatsapp.phoneNumberIdConfigured ? `conectado (${whatsapp.credentialSource || "servidor"})` : "aguardando conexão"} · ${whatsappMetaState} · número ${whatsappConnection} · ${whatsappTemplateState} · ${whatsappSecurityState}</small>
+      <small>${whatsapp.tokenConfigured && whatsapp.phoneNumberIdConfigured ? `conectado (${whatsapp.credentialSource || "servidor"})` : "aguardando conexão"} · ${whatsappMetaState} · número ${whatsappConnection} · ${whatsappTemplateState} · ${whatsappAutomationTemplates} · ${whatsappSecurityState}</small>
     </article>
     <article class="integration-status-card">
       <strong>Pix</strong>
@@ -2479,6 +2484,8 @@ if (integrationForm) {
         mode: String(formData.get("whatsappMode") || "sandbox"),
         defaultTemplate: String(formData.get("whatsappTemplate") || "retorno_cliente_sumido").trim(),
         templateLanguage: String(formData.get("whatsappTemplateLanguage") || "pt_BR").trim(),
+        slotInviteTemplate: String(formData.get("whatsappSlotInviteTemplate") || "encaixe_horario_vago").trim(),
+        reminderTemplate: String(formData.get("whatsappReminderTemplate") || "lembrete_agendamento").trim(),
         businessAccountId: String(formData.get("whatsappBusinessAccountId") || "").trim(),
         phoneNumberId: String(formData.get("whatsappPhoneNumberId") || "").trim(),
         accessToken: String(formData.get("whatsappAccessToken") || "").trim(),
