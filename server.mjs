@@ -613,6 +613,103 @@ function customerMessages(db, shopId, appointment = {}) {
   };
 }
 
+function buildSlotInviteText(db, shopId, appointment, client) {
+  const shop = db.barbershops.find((item) => item.id === shopId) || {};
+  const service = appointment.service && appointment.service !== "Corte ou barba" ? ` para ${appointment.service}` : "";
+  return `Oi, ${client.name}! Aqui é da ${shop.name || "barbearia"}. Abriu um horário ${formatCustomerDate(appointmentDate(appointment))} às ${appointment.time} com ${appointment.barber}${service}. Quer que eu reserve para você? Responda "sim" para confirmar.`;
+}
+
+function recentInviteForClient(db, shopId, phone, hours = 24) {
+  const cutoff = Date.now() - hours * 60 * 60 * 1000;
+  return scope(db.messageHistory, shopId).some((message) => (
+    message.type === "slot_invite"
+    && normalizePhone(message.phone) === normalizePhone(phone)
+    && new Date(message.createdAt || message.at || 0).getTime() >= cutoff
+  ));
+}
+
+function clientValue(client) {
+  return Number(client.value || client.ticket || 0);
+}
+
+function eligibleInviteClients(db, shopId, appointment) {
+  const wait = scope(db.waitlist, shopId).find((item) => item.period === periodFromTimeForServer(appointment.time));
+  const waitBest = wait?.best || "";
+  const clientsByName = new Map(scope(db.clients, shopId).map((client) => [client.name, client]));
+  const inactive = scope(db.inactiveClients, shopId).map((client) => ({ ...client, ...(clientsByName.get(client.name) || {}) }));
+  const candidates = [
+    ...(waitBest && clientsByName.has(waitBest) ? [{ ...clientsByName.get(waitBest), intent: wait?.chance || "Alta" }] : []),
+    ...inactive,
+    ...scope(db.clients, shopId),
+  ];
+  const seen = new Set();
+  return candidates
+    .filter((client) => client?.name && normalizePhone(client.phone) && client.consentWhatsapp)
+    .filter((client) => {
+      const key = normalizePhone(client.phone);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return !recentInviteForClient(db, shopId, client.phone, 24);
+    })
+    .sort((a, b) => {
+      const intentScore = { Alta: 3, "Média": 2, Media: 2, Baixa: 1 };
+      return (intentScore[b.intent] || 0) - (intentScore[a.intent] || 0) || clientValue(b) - clientValue(a);
+    });
+}
+
+function periodFromTimeForServer(time) {
+  const hour = Number(String(time || "0").split(":")[0] || 0);
+  if (hour < 12) return "Manhã";
+  if (hour < 14) return "Almoço";
+  if (hour < 18) return "Tarde";
+  return "Noite";
+}
+
+function slotInviteAppointment(db, shopId, appointmentId = "") {
+  const appointments = scope(db.appointments, shopId)
+    .filter((appointment) => appointment.open)
+    .sort((a, b) => `${appointmentDate(a)} ${a.time || ""}`.localeCompare(`${appointmentDate(b)} ${b.time || ""}`));
+  if (appointmentId) return appointments.find((appointment) => appointment.id === appointmentId) || null;
+  const now = new Date();
+  return appointments.find((appointment) => {
+    const dateText = appointmentDate(appointment);
+    if (dateText < now.toISOString().slice(0, 10)) return false;
+    const appointmentAt = new Date(`${dateText}T${appointment.time || "00:00"}:00`);
+    return Number.isNaN(appointmentAt.getTime()) || appointmentAt.getTime() - now.getTime() >= 60 * 60 * 1000;
+  }) || appointments[0] || null;
+}
+
+async function createAndSendSlotInvite(db, shopId, { appointmentId = "", clientId = "", actor = "system" } = {}) {
+  const appointment = slotInviteAppointment(db, shopId, appointmentId);
+  if (!appointment) return { ok: false, error: "open_slot_not_found" };
+  const clients = eligibleInviteClients(db, shopId, appointment);
+  const client = clientId ? clients.find((item) => item.id === clientId) : clients[0];
+  if (!client) return { ok: false, error: "eligible_client_not_found" };
+
+  const messageText = buildSlotInviteText(db, shopId, appointment, client);
+  const sendResult = await sendWhatsAppText({ db, shopId, to: client.phone, text: messageText }).catch((error) => ({ simulated: false, status: "failed", error }));
+  const invite = withTenant({
+    id: makeId("invite"),
+    type: "slot_invite",
+    appointmentId: appointment.id || "",
+    clientId: client.id || "",
+    client: client.name,
+    phone: normalizePhone(client.phone),
+    message: messageText,
+    status: sendResult.status === "failed" ? "Falha no envio" : (sendResult.simulated ? "Sandbox: pronto" : "Convite enviado"),
+    providerMessageId: sendResult.messageId || "",
+    time: appointment.time,
+    barber: appointment.barber,
+    service: appointment.service,
+    value: clientValue(client),
+    createdAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+  }, shopId);
+  db.messageHistory.unshift(invite);
+  addAudit(db, "slot_invite.sent", actor, { inviteId: invite.id, appointmentId: appointment.id || "", clientId: client.id || "", simulated: Boolean(sendResult.simulated), status: invite.status }, shopId);
+  return { ok: sendResult.status !== "failed", invite, simulated: Boolean(sendResult.simulated), error: sendResult.error?.details?.error?.message || "" };
+}
+
 function extractWhatsAppInboundMessages(body) {
   return (body.entry || []).flatMap((entry) => entry.changes || []).flatMap((change) => {
     const value = change?.value || {};
@@ -906,6 +1003,32 @@ async function handleApi(req, res, url) {
   if (pathname === "/api/campaigns" && req.method === "POST") { if (isBarber(user)) return sendJson(res, 403, { error: "manager_required" }); const body = await readBody(req); const campaign = withTenant({ id: makeId("camp"), status: "Rascunho", createdAt: new Date().toISOString().slice(0, 10), sent: 0, responses: 0, bookings: 0, revenue: 0, ...body }, shopId); db.campaigns.unshift(campaign); addAudit(db, "campaign.created", actor, { id: campaign.id }, shopId); await writeDb(db); return sendJson(res, 201, campaign); }
   if (pathname.startsWith("/api/campaigns/") && req.method === "PUT") { if (isBarber(user)) return sendJson(res, 403, { error: "manager_required" }); const id = pathname.split("/").pop(); const found = scope(db.campaigns, shopId).find((item) => item.id === id); if (!found) return sendJson(res, 404, { error: "campaign_not_found" }); const body = await readBody(req); const next = { ...found, ...body, id, barbershopId: shopId }; db.campaigns = db.campaigns.map((item) => item.id === id ? next : item); addAudit(db, "campaign.updated", actor, { id }, shopId); await writeDb(db); return sendJson(res, 200, next); }
   if (pathname.startsWith("/api/campaigns/") && req.method === "DELETE") { if (isBarber(user)) return sendJson(res, 403, { error: "manager_required" }); const id = pathname.split("/").pop(); db.campaigns = db.campaigns.filter((item) => !(sameTenant(item, shopId) && item.id === id)); addAudit(db, "campaign.deleted", actor, { id }, shopId); await writeDb(db); return sendJson(res, 200, { ok: true }); }
+
+  if (pathname === "/api/slot-invites/send" && req.method === "POST") {
+    if (isBarber(user)) return sendJson(res, 403, { error: "manager_required" });
+    const body = await readBody(req);
+    const result = await createAndSendSlotInvite(db, shopId, { appointmentId: sanitizeText(body.appointmentId, 80), clientId: sanitizeText(body.clientId, 80), actor });
+    await writeDb(db);
+    return result.ok ? sendJson(res, 201, result) : sendJson(res, 422, result);
+  }
+  if (pathname === "/api/slot-invites/auto-run" && req.method === "POST") {
+    if (isBarber(user)) return sendJson(res, 403, { error: "manager_required" });
+    const body = await readBody(req);
+    const limit = Math.max(1, Math.min(5, Number(body.limit || 3)));
+    const openSlots = scope(db.appointments, shopId)
+      .filter((appointment) => appointment.open)
+      .sort((a, b) => `${appointmentDate(a)} ${a.time || ""}`.localeCompare(`${appointmentDate(b)} ${b.time || ""}`))
+      .slice(0, limit);
+    const results = [];
+    for (const appointment of openSlots) {
+      const alreadyInvited = scope(db.messageHistory, shopId).some((message) => message.type === "slot_invite" && message.appointmentId === appointment.id && !["Sem resposta", "Recusado", "Horário indisponível", "Falha no envio"].includes(message.status));
+      if (alreadyInvited) continue;
+      results.push(await createAndSendSlotInvite(db, shopId, { appointmentId: appointment.id, actor }));
+    }
+    addAudit(db, "slot_invite.auto_run", actor, { attempted: openSlots.length, sent: results.filter((item) => item.ok).length }, shopId);
+    await writeDb(db);
+    return sendJson(res, 200, { ok: true, attempted: openSlots.length, sent: results.filter((item) => item.ok).length, results });
+  }
 
   if (pathname === "/api/integrations" && req.method === "GET") return sendJson(res, 200, integrationFor(db, shopId));
   if (pathname === "/api/integrations/whatsapp/embedded-config" && req.method === "GET") {

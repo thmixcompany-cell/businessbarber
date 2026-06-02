@@ -55,11 +55,18 @@ try {
   const adminJson = JSON.stringify(adminState);
   if (adminJson.includes("EAATEST_SECRET_TOKEN") || adminJson.includes("app_secret_teste") || adminJson.includes("verify_token_teste")) throw new Error("whatsapp_secret_leaked_to_admin_state");
   const client = await fetchJson("/api/clients", { method: "POST", headers: auth, body: JSON.stringify({ name: "Cliente Smoke", phone: "559999900123", ticket: 90, favoriteService: "Corte", consentWhatsapp: true }) });
+  const autoClient = await fetchJson("/api/clients", { method: "POST", headers: auth, body: JSON.stringify({ name: "Cliente Auto", phone: "559999900124", ticket: 120, favoriteService: "Barba", consentWhatsapp: true }) });
   await fetchJson(`/api/clients/${client.id}/export`, { headers: auth });
   const message = await fetchJson("/api/whatsapp/send-template", { method: "POST", headers: auth, body: JSON.stringify({ clientId: client.id, variables: [client.name] }) });
   if (!message.simulated) throw new Error("sandbox_should_not_send_real_message");
   const smokeRunId = Date.now().toString(36);
   const appointment = await fetchJson("/api/appointments", { method: "POST", headers: auth, body: JSON.stringify({ time: "19:30", barber: `Smoke ${smokeRunId}`, client: "Cliente Smoke", service: "Corte", status: "Confirmado", date: "2030-01-02" }) });
+  const directInviteAppointment = await fetchJson("/api/appointments", { method: "POST", headers: auth, body: JSON.stringify({ time: "18:00", barber: "Diego", client: "Vago", service: "Corte", status: "Aberto", open: true, date: "2030-01-02" }) });
+  const directInvite = await fetchJson("/api/slot-invites/send", { method: "POST", headers: auth, body: JSON.stringify({ appointmentId: directInviteAppointment.id, clientId: client.id }) });
+  if (!directInvite.invite || directInvite.invite.appointmentId !== directInviteAppointment.id || !directInvite.invite.expiresAt) throw new Error("slot_invite_send_failed");
+  const autoInviteAppointment = await fetchJson("/api/appointments", { method: "POST", headers: auth, body: JSON.stringify({ time: "18:30", barber: "Rafa", client: "Vago", service: "Barba", status: "Aberto", open: true, date: "2030-01-02" }) });
+  const autoRun = await fetchJson("/api/slot-invites/auto-run", { method: "POST", headers: auth, body: JSON.stringify({ limit: 2 }) });
+  if (!autoRun.ok || autoRun.sent < 1) throw new Error("slot_invite_auto_run_failed");
   const barberUser = await fetchJson("/api/users", { method: "POST", headers: auth, body: JSON.stringify({ name: "Diego", email: `diego.${smokeRunId}@example.com`, password: "BarbeiroSmoke#2026", role: "barber" }) });
   const barberAppointment = await fetchJson("/api/appointments", { method: "POST", headers: auth, body: JSON.stringify({ time: "20:00", barber: "Diego", client: "Cliente Diego", service: "Corte", status: "Confirmado", date: "2030-01-03" }) });
   const otherAppointment = await fetchJson("/api/appointments", { method: "POST", headers: auth, body: JSON.stringify({ time: "20:30", barber: "Rafa", client: "Cliente Rafa", service: "Barba", status: "Confirmado", date: "2030-01-03" }) });
@@ -97,7 +104,10 @@ try {
   await fetchJson(`/api/appointments/${otherAppointment.id}`, { method: "DELETE", headers: auth });
   await fetchJson(`/api/appointments/${barberAppointment.id}`, { method: "DELETE", headers: auth });
   await fetchJson(`/api/appointments/${inviteAppointment.id}`, { method: "DELETE", headers: auth });
+  await fetchJson(`/api/appointments/${autoInviteAppointment.id}`, { method: "DELETE", headers: auth });
+  await fetchJson(`/api/appointments/${directInviteAppointment.id}`, { method: "DELETE", headers: auth });
   await fetchJson(`/api/appointments/${appointment.id}`, { method: "DELETE", headers: auth });
+  await fetchJson(`/api/clients/${autoClient.id}`, { method: "DELETE", headers: auth });
   await fetchJson(`/api/clients/${client.id}`, { method: "DELETE", headers: auth });
   console.log("Smoke test V2 passou: segurança, isolamento, LGPD, WhatsApp sandbox, agendamento público, CRUD e páginas OK.");
 } finally { server.kill(); }

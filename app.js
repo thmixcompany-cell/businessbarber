@@ -689,6 +689,34 @@ function addInviteHistory(status, shouldBook = false) {
   showToast(entry.status === "Agendado"  ?"Convite registrado e horário agendado." : "Convite registrado no histórico.");
 }
 
+async function sendPendingInviteNow() {
+  if (!pendingInvite) return;
+  if (!apiEnabled) {
+    addInviteHistory("Convite enviado", false);
+    return;
+  }
+  const response = await apiFetch("/api/slot-invites/send", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ appointmentId: pendingInvite.slot.id || "" }),
+  }).catch(() => null);
+  if (!response?.ok) {
+    const result = response ? await response.json().catch(() => ({})) : {};
+    const messages = {
+      open_slot_not_found: "Esse horário não está mais livre.",
+      eligible_client_not_found: "Nenhum cliente elegível com consentimento WhatsApp para esse horário.",
+    };
+    showToast(messages[result.error] || "Não foi possível enviar o convite agora.");
+    return;
+  }
+  const result = await response.json();
+  state.messageHistory.unshift(result.invite);
+  closeInviteModal();
+  await hydrateStateFromApi();
+  renderAll();
+  showToast(result.simulated ? "Convite registrado em sandbox. Com WhatsApp em produção, ele será enviado automaticamente." : "Convite enviado pela Cloud API.");
+}
+
 function renderPriorityBoard() {
   if (!priorityList) return;
   const slot = bestOpenSlot();
@@ -2013,8 +2041,28 @@ document.querySelector("#fillBestSlot").addEventListener("click", () => {
   fillSlot(slot.originalIndex);
 });
 
+document.querySelector("#autoRunInvites")?.addEventListener("click", async () => {
+  if (!apiEnabled) {
+    showToast("Automação automática precisa do backend ativo.");
+    return;
+  }
+  const response = await apiFetch("/api/slot-invites/auto-run", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ limit: 3 }),
+  }).catch(() => null);
+  if (!response?.ok) {
+    showToast("Não consegui rodar a automação agora.");
+    return;
+  }
+  const result = await response.json();
+  await hydrateStateFromApi();
+  renderAll();
+  showToast(result.sent ? `${result.sent} convite(s) preparado(s) pela automação.` : "Nenhum cliente elegível encontrado para os horários vagos.");
+});
+
 document.querySelector("#closeInviteModal").addEventListener("click", closeInviteModal);
-document.querySelector("#sendInviteOnly").addEventListener("click", () => addInviteHistory("Convite enviado", false));
+document.querySelector("#sendInviteOnly").addEventListener("click", sendPendingInviteNow);
 document.querySelector("#sendInviteAndBook").addEventListener("click", () => addInviteHistory("Agendado", true));
 inviteModal.addEventListener("click", (event) => {
   if (event.target === inviteModal) closeInviteModal();
