@@ -590,12 +590,19 @@ function buildInviteMessage(slot, client) {
   return `Oi, ${client.name}! Aqui é da ${shop}. Abriu um horário hoje às ${slot.time} com ${slot.barber}${service}. Quer que eu reserve para você?`;
 }
 
+function buildCustomerSlotInviteMessage(slot, client) {
+  const shop = currentShop().name || "barbearia";
+  const service = slot.service && slot.service !== "Corte ou barba" ? ` para ${slot.service}` : "";
+  const date = appointmentDate(slot) === todayIso() ? "hoje" : formatDateTitle(appointmentDate(slot));
+  return `Oi, ${client.name}! Aqui é da ${shop}. Abriu um horário ${date} às ${slot.time} com ${slot.barber}${service}. Quer que eu reserve para você? Responda "sim" para confirmar.`;
+}
+
 function invitePayloadFromSlot(index) {
   const slot = state.appointments[index];
   if (!slot || !slot.open) return null;
   const client = suggestedClientForSlot({ ...slot, originalIndex: index });
   if (!client) return null;
-  const message = buildInviteMessage(slot, client);
+  const message = buildCustomerSlotInviteMessage(slot, client);
   return {
     appointmentIndex: index,
     slot,
@@ -669,6 +676,7 @@ function addInviteHistory(status, shouldBook = false) {
     service: pendingInvite.slot.service,
     value: Number(pendingInvite.client.value || 0),
     createdAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
   };
   if (shouldBook) {
     const booked = completeSlotFromInvite(pendingInvite, "Recuperado");

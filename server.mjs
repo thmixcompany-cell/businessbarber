@@ -577,6 +577,42 @@ function classifyWhatsAppReply(text) {
   return "ambiguous";
 }
 
+function formatCustomerDate(dateText) {
+  const date = new Date(`${dateText || new Date().toISOString().slice(0, 10)}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return "na data combinada";
+  const today = new Date().toISOString().slice(0, 10);
+  if ((dateText || "").slice(0, 10) === today) return "hoje";
+  return new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit" }).format(date);
+}
+
+function customerMessageContext(db, shopId, appointment = {}) {
+  const shop = db.barbershops.find((item) => item.id === shopId) || {};
+  const booking = db.publicBookingByShop[shopId] || {};
+  const pix = integrationFor(db, shopId).pix || {};
+  const depositRequired = Boolean(booking.depositRequired || appointment.depositRequired);
+  return {
+    shopName: shop.name || "barbearia",
+    date: formatCustomerDate(appointmentDate(appointment)),
+    time: appointment.time || "horário combinado",
+    barber: appointment.barber || "profissional",
+    service: appointment.service || "serviço",
+    depositRequired,
+    depositAmount: Number(pix.depositAmount || 15),
+    pixKey: pix.key || "",
+  };
+}
+
+function customerMessages(db, shopId, appointment = {}) {
+  const context = customerMessageContext(db, shopId, appointment);
+  return {
+    confirmed: `Perfeito. Seu horário ficou confirmado para ${context.date} às ${context.time} com ${context.barber}. Te esperamos na ${context.shopName}.`,
+    pixRequired: `Perfeito. Pré-reservei seu horário para ${context.date} às ${context.time} com ${context.barber}. Para confirmar, envie o sinal de R$ ${context.depositAmount}${context.pixKey ? ` pelo Pix: ${context.pixKey}` : " pelo Pix da barbearia"}. Assim que o sinal for marcado, sua reserva fica confirmada.`,
+    unavailable: "Esse horário acabou de ser preenchido. Vou verificar outra opção para você.",
+    declined: "Tudo bem. Quando quiser outro horário, é só chamar por aqui.",
+    ambiguous: "Consegui ver sua resposta. Para eu reservar automaticamente, responda apenas \"sim\". Se preferir outro horário, me diga qual período fica melhor.",
+  };
+}
+
 function extractWhatsAppInboundMessages(body) {
   return (body.entry || []).flatMap((entry) => entry.changes || []).flatMap((change) => {
     const value = change?.value || {};
@@ -615,14 +651,14 @@ async function processSlotInviteReply(db, shopId, inbound) {
   if (intent === "negative") {
     invite.status = "Recusado";
     addAudit(db, "slot_invite.declined", "whatsapp", { inviteId: invite.id, phone: maskSecret(inbound.from) }, shopId);
-    await sendWhatsAppText({ db, shopId, to: inbound.from, text: "Tudo bem. Quando quiser outro horário, é só chamar por aqui." }).catch(() => null);
+    await sendWhatsAppText({ db, shopId, to: inbound.from, text: customerMessages(db, shopId).declined }).catch(() => null);
     return { matched: true, intent, status: invite.status };
   }
 
   if (intent !== "positive") {
     invite.status = "Cliente respondeu";
     addAudit(db, "slot_invite.needs_review", "whatsapp", { inviteId: invite.id, phone: maskSecret(inbound.from), intent }, shopId);
-    await sendWhatsAppText({ db, shopId, to: inbound.from, text: "Te respondo por aqui para confirmar o melhor horário certinho." }).catch(() => null);
+    await sendWhatsAppText({ db, shopId, to: inbound.from, text: customerMessages(db, shopId).ambiguous }).catch(() => null);
     return { matched: true, intent, status: invite.status };
   }
 
@@ -630,22 +666,26 @@ async function processSlotInviteReply(db, shopId, inbound) {
   if (!appointment || !appointment.open) {
     invite.status = "Horário indisponível";
     addAudit(db, "slot_invite.slot_unavailable", "whatsapp", { inviteId: invite.id, phone: maskSecret(inbound.from) }, shopId);
-    await sendWhatsAppText({ db, shopId, to: inbound.from, text: "Esse horário acabou de ser ocupado. Vou verificar outra opção para você." }).catch(() => null);
+    await sendWhatsAppText({ db, shopId, to: inbound.from, text: customerMessages(db, shopId, appointment || {}).unavailable }).catch(() => null);
     return { matched: true, intent, status: invite.status };
   }
 
+  const context = customerMessageContext(db, shopId, appointment);
+  const messages = customerMessages(db, shopId, appointment);
   appointment.client = invite.client || "Cliente WhatsApp";
   appointment.phone = inbound.from;
-  appointment.status = "Recuperado";
+  appointment.status = context.depositRequired ? "Sinal Pix" : "Recuperado";
   appointment.open = false;
   appointment.recovered = true;
   appointment.recoveredAt = new Date().toISOString();
+  appointment.depositRequired = context.depositRequired;
+  appointment.depositStatus = appointment.depositRequired ? "aguardando_pagamento" : "nao_exigido";
   appointment.source = "whatsapp_auto_reply";
-  invite.status = "Agendado";
+  invite.status = appointment.depositRequired ? "Aguardando Pix" : "Agendado";
   invite.bookedAt = appointment.recoveredAt;
   invite.appointmentId = appointment.id || invite.appointmentId || "";
   addAudit(db, "slot_invite.auto_booked", "whatsapp", { inviteId: invite.id, appointmentId: appointment.id || "", phone: maskSecret(inbound.from) }, shopId);
-  await sendWhatsAppText({ db, shopId, to: inbound.from, text: `Perfeito. Seu horário ficou reservado para ${appointmentDate(appointment)} às ${appointment.time} com ${appointment.barber}.` }).catch(() => null);
+  await sendWhatsAppText({ db, shopId, to: inbound.from, text: appointment.depositRequired ? messages.pixRequired : messages.confirmed }).catch(() => null);
   return { matched: true, intent, status: invite.status, appointmentId: appointment.id || "" };
 }
 
