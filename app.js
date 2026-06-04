@@ -29,6 +29,7 @@ const defaultState = {
       openTime: "09:00",
       closeTime: "19:00",
       active: true,
+      billing: { provider: "stripe", status: "pending" },
     },
   ],
   users: [
@@ -1695,6 +1696,28 @@ function renderTenantAndPermissions() {
   }
 }
 
+function renderBilling() {
+  const shop = currentShop() || {};
+  const billing = shop.billing || {};
+  const status = shop.subscriptionStatus || billing.status || "pending";
+  const label = {
+    active: "Assinatura ativa",
+    trialing: "Período de teste",
+    past_due: "Pagamento pendente",
+    unpaid: "Pagamento em aberto",
+    canceled: "Assinatura cancelada",
+    pending: "Aguardando assinatura",
+  }[status] || status;
+  const statusEl = document.querySelector("#billingStatus");
+  if (statusEl) statusEl.textContent = label;
+  const message = document.querySelector("#billingMessage");
+  if (message) {
+    message.textContent = billing.lastEvent
+      ? `Último evento Stripe: ${billing.lastEvent}.`
+      : "Plano piloto: R$ 197/mês.";
+  }
+}
+
 function renderAudit() {
   if (!auditList) return;
   const logs = (state.auditLogs || []).slice(0, 10);
@@ -2029,6 +2052,7 @@ function renderAll() {
   renderShopSettings();
   renderIntegrations();
   renderTenantAndPermissions();
+  renderBilling();
   renderAudit();
   renderPilot();
   renderPipeline();
@@ -2562,6 +2586,41 @@ if (integrationForm) {
     showToast("Integrações salvas.");
   });
 }
+
+async function startStripeCheckout() {
+  const button = document.querySelector("#startCheckout");
+  const original = button?.textContent || "Assinar agora";
+  if (button) { button.disabled = true; button.textContent = "Abrindo checkout..."; }
+  try {
+    const response = await apiFetch("/api/billing/create-checkout-session", { method: "POST" });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload.url) throw new Error(payload.message || "checkout_indisponivel");
+    window.location.href = payload.url;
+  } catch (error) {
+    showToast("Não consegui abrir o checkout. Confira a Stripe no Render.");
+  } finally {
+    if (button) { button.disabled = false; button.textContent = original; }
+  }
+}
+
+async function openStripePortal() {
+  const button = document.querySelector("#manageBilling");
+  const original = button?.textContent || "Gerenciar assinatura";
+  if (button) { button.disabled = true; button.textContent = "Abrindo portal..."; }
+  try {
+    const response = await apiFetch("/api/billing/create-portal-session", { method: "POST" });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload.url) throw new Error(payload.error || "portal_indisponivel");
+    window.location.href = payload.url;
+  } catch (error) {
+    showToast("Portal ainda indisponível. Assine primeiro ou confira o webhook Stripe.");
+  } finally {
+    if (button) { button.disabled = false; button.textContent = original; }
+  }
+}
+
+document.querySelector("#startCheckout")?.addEventListener("click", startStripeCheckout);
+document.querySelector("#manageBilling")?.addEventListener("click", openStripePortal);
 
 const testWhatsApp = document.querySelector("#testWhatsApp");
 const connectWhatsAppMeta = document.querySelector("#connectWhatsAppMeta");

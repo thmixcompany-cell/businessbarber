@@ -3699,3 +3699,72 @@ body:has(.admin-shell) .admin-view.active {
 .legal-page h2 { margin-top:32px; color:#ebbd76; font-size:20px; }
 .legal-page p, .legal-page li { color:#bcb2a6; line-height:1.75; }
 @media (max-width: 900px) { .marketing-nav { padding:20px; } .marketing-nav nav a:not(.nav-login) { display:none; } .marketing-main { padding:20px 20px 54px; } .marketing-hero, .results-section, .pilot-section, .fit-section, .roi-section { display:block; min-height:0; } .hero-actions, .public-explainer { flex-direction:column; align-items:stretch; } .hero-dashboard, .pilot-card, .roi-card { margin-top:38px; } .benefit-grid, .service-showcase-grid { grid-template-columns:1fr; } .marketing-footer { flex-direction:column; padding:25px 20px; } .hero-copy h1 { font-size:39px; } }
+
+/* ===== Hotfix Stripe/Admin ===== */
+body:has(.admin-shell) .prospect-form,
+body:has(.admin-shell) .next-actions,
+body:has(.admin-shell) .proposal-card,
+body:has(.admin-shell) .pitch-box,
+body:has(.admin-shell) .pilot-offer,
+body:has(.admin-shell) .pilot-step,
+body:has(.admin-shell) .question-item,
+body:has(.admin-shell) .pipeline-card,
+body:has(.admin-shell) .break-even,
+body:has(.admin-shell) .client-admin-card,
+body:has(.admin-shell) .import-box {
+  border-color: rgba(232, 214, 184, 0.12) !important;
+  color: #fff8ee !important;
+  background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.035)), #191c1e !important;
+}
+
+body:has(.admin-shell) .prospect-form .field,
+body:has(.admin-shell) .prospect-form label,
+body:has(.admin-shell) .next-actions,
+body:has(.admin-shell) .next-actions p {
+  color: #fff8ee !important;
+}
+
+body:has(.admin-shell) .prospect-form input,
+body:has(.admin-shell) .prospect-form textarea,
+body:has(.admin-shell) .prospect-form select {
+  border-color: rgba(232, 214, 184, 0.14) !important;
+  color: #fff8ee !important;
+  background: rgba(255, 255, 255, 0.055) !important;
+}
+
+body:has(.admin-shell) .prospect-form input::placeholder,
+body:has(.admin-shell) .prospect-form textarea::placeholder {
+  color: rgba(244, 239, 230, 0.42) !important;
+}
+
+.checkout-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  padding: 0 24px;
+  border: 1px solid rgba(231,187,116,.42);
+  border-radius: 10px;
+  color: #f7d59b;
+  background: rgba(231,187,116,.08);
+  font-weight: 800;
+  text-decoration: none;
+}
+.checkout-link:hover,
+.checkout-secondary:hover { background: rgba(231,187,116,.16); }
+.checkout-secondary { margin-top: 12px; color: #f7d59b !important; background: rgba(231,187,116,.08) !important; }
+.billing-card {
+  display: grid;
+  gap: 14px;
+  padding: 22px;
+  border: 1px solid rgba(232, 214, 184, .13);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.035)), #191c1e;
+}
+.billing-card > span { color: var(--muted); font-size: 13px; }
+.billing-card strong { color: #fff8ee; font-size: clamp(28px, 4vw, 42px); }
+.billing-card p { margin: 0; color: var(--muted); line-height: 1.55; }
+.billing-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.billing-actions .primary-button,
+.billing-actions .secondary-button { min-width: 190px; }
+.billing-admin-list article { align-items: center; }

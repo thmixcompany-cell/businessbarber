@@ -48,6 +48,7 @@
           </div>
           <div class="topbar-actions">
             <a class="secondary-button" href="/">Ver site</a>
+            <a class="secondary-button" href="/api/billing/checkout">Abrir checkout</a>
             <a class="primary-button" href="/public.html?barbearia=barbearia-alpha" target="_blank" rel="noreferrer">Ver página pública</a>
           </div>
         </header>
@@ -210,28 +211,44 @@
             <section class="panel">
               <div class="panel-header">
                 <div>
-                  <span class="eyebrow">Operação técnica</span>
-                  <h2>Comandos e arquivos</h2>
+                  <span class="eyebrow">Assinaturas</span>
+                  <h2>Stripe e cobrança</h2>
                 </div>
+                <a class="primary-button" href="/api/billing/checkout">Abrir checkout</a>
               </div>
-              <div class="ops-list">
-                <article><strong>Rodar local</strong><code>npm start</code></article>
-                <article><strong>Validar sintaxe</strong><code>npm run check</code></article>
-                <article><strong>Teste de fumaça</strong><code>npm test</code></article>
-                <article><strong>Backup JSON</strong><code>npm run backup</code></article>
+              <div class="compact-list billing-admin-list">
+                <article>
+                  <div>
+                    <strong>Checkout do Business Barber</strong>
+                    <span>Use este link para testar ou enviar a assinatura mensal de R$ 197.</span>
+                  </div>
+                  <a class="tiny-button" href="/api/billing/checkout">Gerar checkout</a>
+                </article>
+                <article>
+                  <div>
+                    <strong>Webhook Stripe</strong>
+                    <span>Endpoint configurado: /api/stripe/webhook. Eventos de assinatura atualizam o status da barbearia quando vierem com metadata.</span>
+                  </div>
+                  <span class="status-pill good">Pronto</span>
+                </article>
               </div>
             </section>
             <section class="panel">
               <div class="panel-header">
                 <div>
-                  <span class="eyebrow">Links úteis</span>
-                  <h2>Documentação do projeto</h2>
+                  <span class="eyebrow">Operação</span>
+                  <h2>Checklist para vender</h2>
                 </div>
               </div>
-              <div class="ops-links"><p class="muted">Documentação interna protegida. Consulte os arquivos no repositório privado.</p></div>
+              <div class="admin-checklist">
+                <label><input type="checkbox" checked disabled /> Supabase conectado</label>
+                <label><input type="checkbox" checked disabled /> WhatsApp testado</label>
+                <label><input type="checkbox" checked disabled /> Templates aprovados</label>
+                <label><input type="checkbox" checked disabled /> Stripe configurado</label>
+              </div>
             </section>
           </div>
-        </section>
+        </section>        </section>
       </main>
     </div>
 

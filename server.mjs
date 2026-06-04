@@ -34,6 +34,11 @@ const metaAppSecret = process.env.META_APP_SECRET || whatsappAppSecret;
 const metaBusinessId = process.env.META_BUSINESS_ID || "";
 const metaSystemUserAccessToken = process.env.META_SYSTEM_USER_ACCESS_TOKEN || "";
 const metaEmbeddedSignupConfigId = process.env.META_EMBEDDED_SIGNUP_CONFIG_ID || "";
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY || "";
+const stripePriceId = process.env.STRIPE_PRICE_ID || "";
+const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
+const stripeSuccessUrl = process.env.STRIPE_SUCCESS_URL || `${appUrl.replace(/\/$/, "")}/app.html?billing=success&session_id={CHECKOUT_SESSION_ID}`;
+const stripeCancelUrl = process.env.STRIPE_CANCEL_URL || `${appUrl.replace(/\/$/, "")}/app.html?billing=cancel`;
 
 const tenantCollections = [
   "clients", "professionals", "services", "campaigns", "inactiveClients", "appointments", "waitlist", "clubPlans", "messageHistory", "pixCharges",
@@ -101,7 +106,12 @@ function sendText(res, status, text) {
   res.end(text);
 }
 
-async function readBody(req) {
+function sendRedirect(res, location, status = 303) {
+  res.writeHead(status, securityHeaders({ Location: location }));
+  res.end();
+}
+
+async function readRawBody(req) {
   const chunks = [];
   let total = 0;
   for await (const chunk of req) {
@@ -113,7 +123,11 @@ async function readBody(req) {
     }
     chunks.push(chunk);
   }
-  const raw = Buffer.concat(chunks).toString("utf8");
+  return Buffer.concat(chunks);
+}
+
+async function readBody(req) {
+  const raw = (await readRawBody(req)).toString("utf8");
   if (!raw) return {};
   try { return JSON.parse(raw); } catch { const error = new Error("invalid_json"); error.statusCode = 400; throw error; }
 }
@@ -262,6 +276,8 @@ function normalizeDb(raw) {
   db.users = Array.isArray(db.users) ? db.users : [];
   db.auditLogs = Array.isArray(db.auditLogs) ? db.auditLogs : [];
   db.prospects = Array.isArray(db.prospects) ? db.prospects : [];
+  db.stripeEvents = Array.isArray(db.stripeEvents) ? db.stripeEvents : [];
+  db.checkoutRequests = Array.isArray(db.checkoutRequests) ? db.checkoutRequests : [];
   db.integrationsByShop = db.integrationsByShop || {};
   db.publicBookingByShop = db.publicBookingByShop || {};
   db.onboardingByShop = db.onboardingByShop || {};
@@ -985,16 +1001,134 @@ async function handleWebhook(req, res, url) {
   return sendJson(res, 200, { received: true });
 }
 
+function stripeConfigured() {
+  return Boolean(stripeSecretKey && stripePriceId);
+}
+
+async function stripeRequest(pathname, params) {
+  if (!stripeSecretKey) {
+    const error = new Error("stripe_not_configured");
+    error.statusCode = 503;
+    throw error;
+  }
+  const response = await fetch(`https://api.stripe.com/v1${pathname}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${stripeSecretKey}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams(params),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(payload?.error?.message || `stripe_failed_${response.status}`);
+    error.statusCode = 502;
+    error.stripe = payload?.error || {};
+    throw error;
+  }
+  return payload;
+}
+
+async function createStripeCheckoutSession({ db, user = null, shopId = "", source = "public" }) {
+  if (!stripeConfigured()) {
+    const error = new Error("stripe_not_configured");
+    error.statusCode = 503;
+    throw error;
+  }
+  const shop = shopId ? db.barbershops.find((item) => item.id === shopId) : null;
+  const successUrl = stripeSuccessUrl || `${appUrl.replace(/\/$/, "")}/app.html?billing=success&session_id={CHECKOUT_SESSION_ID}`;
+  const cancelUrl = stripeCancelUrl || `${appUrl.replace(/\/$/, "")}/app.html?billing=cancel`;
+  const params = {
+    mode: "subscription",
+    "line_items[0][price]": stripePriceId,
+    "line_items[0][quantity]": "1",
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+    allow_promotion_codes: "true",
+    client_reference_id: shopId || "public",
+    "metadata[source]": source,
+    "metadata[barbershop_id]": shopId || "",
+    "metadata[barbershop_name]": shop?.name || "",
+    "subscription_data[metadata][barbershop_id]": shopId || "",
+    "subscription_data[metadata][source]": source,
+  };
+  if (user?.email) params.customer_email = user.email;
+  const session = await stripeRequest("/checkout/sessions", params);
+  db.checkoutRequests.unshift({ id: makeId("checkout"), at: new Date().toISOString(), source, shopId: shopId || null, sessionId: session.id, url: session.url, actor: user?.email || "public" });
+  db.checkoutRequests = db.checkoutRequests.slice(0, 100);
+  return session;
+}
+
+function parseStripeSignature(header = "") {
+  return Object.fromEntries(String(header).split(",").map((part) => part.split("=")).filter((item) => item.length === 2));
+}
+
+function verifyStripeSignature(rawBody, signatureHeader) {
+  if (!stripeWebhookSecret) return false;
+  const parts = parseStripeSignature(signatureHeader);
+  const timestamp = parts.t;
+  const expected = parts.v1;
+  if (!timestamp || !expected) return false;
+  const actual = createHmac("sha256", stripeWebhookSecret).update(`${timestamp}.${rawBody}`).digest("hex");
+  return safeCompare(actual, expected);
+}
+
+function updateShopBillingFromStripe(db, event) {
+  const obj = event?.data?.object || {};
+  const meta = obj.metadata || {};
+  const shopId = meta.barbershop_id || obj.client_reference_id || obj.metadata?.barbershopId || "";
+  const shop = db.barbershops.find((item) => item.id === shopId);
+  if (!shop) return { matched: false, shopId };
+  shop.billing = {
+    ...(shop.billing || {}),
+    provider: "stripe",
+    lastEvent: event.type,
+    lastEventAt: new Date().toISOString(),
+    customerId: obj.customer || shop.billing?.customerId || "",
+    subscriptionId: obj.subscription || obj.id || shop.billing?.subscriptionId || "",
+  };
+  if (event.type === "checkout.session.completed") shop.billing.status = "active";
+  if (event.type === "customer.subscription.created" || event.type === "customer.subscription.updated") shop.billing.status = obj.status || shop.billing.status || "active";
+  if (event.type === "customer.subscription.deleted") shop.billing.status = "canceled";
+  if (event.type === "invoice.payment_succeeded") shop.billing.status = "active";
+  if (event.type === "invoice.payment_failed") shop.billing.status = "past_due";
+  shop.subscriptionStatus = shop.billing.status;
+  return { matched: true, shopId };
+}
+
+async function handleStripeWebhook(req, res) {
+  const rawBuffer = await readRawBody(req);
+  const rawBody = rawBuffer.toString("utf8");
+  if (stripeWebhookSecret && !verifyStripeSignature(rawBody, req.headers["stripe-signature"] || "")) {
+    return sendJson(res, 400, { error: "invalid_stripe_signature" });
+  }
+  let event;
+  try { event = JSON.parse(rawBody); } catch { return sendJson(res, 400, { error: "invalid_stripe_payload" }); }
+  const db = await readDb();
+  const update = updateShopBillingFromStripe(db, event);
+  db.stripeEvents.unshift({ id: event.id || makeId("stripeevt"), type: event.type, at: new Date().toISOString(), matched: update.matched, shopId: update.shopId || null });
+  db.stripeEvents = db.stripeEvents.slice(0, 200);
+  addAudit(db, "stripe.webhook_received", "stripe", { type: event.type, matched: update.matched, shopId: update.shopId || "" }, update.shopId || null);
+  await writeDb(db);
+  return sendJson(res, 200, { received: true });
+}
+
 async function handleApi(req, res, url) {
   const { pathname, searchParams } = url;
   if (pathname === "/api/webhooks/whatsapp") return handleWebhook(req, res, url);
+  if (pathname === "/api/stripe/webhook") return handleStripeWebhook(req, res);
+  if (pathname === "/api/billing/checkout" && req.method === "GET") {
+    const db = await readDb();
+    try { const session = await createStripeCheckoutSession({ db, source: "landing" }); await writeDb(db); return sendRedirect(res, session.url); }
+    catch (error) { console.error("Stripe checkout public error:", error.message, error.stripe || ""); return sendText(res, error.statusCode || 500, "Stripe checkout indisponível. Confira as variáveis STRIPE_SECRET_KEY e STRIPE_PRICE_ID."); }
+  }
   if (pathname === "/api/health") {
     try {
       if (storageProvider === "supabase") await readSupabaseState();
-      return sendJson(res, 200, { ok: true, storage: storageProvider, databaseConnected: true, whatsappConfigured: Boolean(whatsappAccessToken && whatsappPhoneNumberId) });
+      return sendJson(res, 200, { ok: true, storage: storageProvider, databaseConnected: true, whatsappConfigured: Boolean(whatsappAccessToken && whatsappPhoneNumberId), stripeConfigured: stripeConfigured() });
     } catch (error) {
       console.error("Health check database error:", error.message);
-      return sendJson(res, 503, { ok: false, storage: storageProvider, databaseConnected: false, whatsappConfigured: Boolean(whatsappAccessToken && whatsappPhoneNumberId) });
+      return sendJson(res, 503, { ok: false, storage: storageProvider, databaseConnected: false, whatsappConfigured: Boolean(whatsappAccessToken && whatsappPhoneNumberId), stripeConfigured: stripeConfigured() });
     }
   }
   if (pathname.startsWith("/api/public/") && isRateLimited(req, "public", 25)) return sendJson(res, 429, { error: "rate_limited" });
@@ -1047,6 +1181,18 @@ async function handleApi(req, res, url) {
 
   if (pathname === "/api/logout" && req.method === "POST") return sendJson(res, 200, { ok: true });
   if (pathname === "/api/me" && req.method === "GET") return sendJson(res, 200, { user: publicUser(user), currentBarbershopId: shopId });
+  if (pathname === "/api/billing/create-checkout-session" && req.method === "POST") {
+    if (isBarber(user)) return sendJson(res, 403, { error: "owner_required" });
+    try { const session = await createStripeCheckoutSession({ db, user, shopId, source: "app" }); await writeDb(db); return sendJson(res, 200, { url: session.url, id: session.id }); }
+    catch (error) { console.error("Stripe checkout error:", error.message, error.stripe || ""); return sendJson(res, error.statusCode || 500, { error: "stripe_checkout_failed", message: error.message }); }
+  }
+  if (pathname === "/api/billing/create-portal-session" && req.method === "POST") {
+    if (isBarber(user)) return sendJson(res, 403, { error: "owner_required" });
+    const shop = db.barbershops.find((item) => item.id === shopId);
+    if (!shop?.billing?.customerId) return sendJson(res, 409, { error: "stripe_customer_not_found" });
+    try { const portal = await stripeRequest("/billing_portal/sessions", { customer: shop.billing.customerId, return_url: `${appUrl.replace(/\/$/, "")}/app.html?billing=portal` }); return sendJson(res, 200, { url: portal.url }); }
+    catch (error) { return sendJson(res, error.statusCode || 500, { error: "stripe_portal_failed", message: error.message }); }
+  }
   if (pathname === "/api/state" && req.method === "GET") return sendJson(res, 200, customerState(db, user));
   if (pathname === "/api/state" && req.method === "PUT") {
     if (isBarber(user)) return sendJson(res, 403, { error: "manager_required" });

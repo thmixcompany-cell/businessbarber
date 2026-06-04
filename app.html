@@ -61,6 +61,10 @@
             <span class="nav-icon">⚙</span>
             Ajustes
           </button>
+          <button class="nav-item" data-view="billing" type="button">
+            <span class="nav-icon">$</span>
+            Assinatura
+          </button>
           <button class="nav-item" data-view="clients" type="button">
             <span class="nav-icon">@</span>
             Clientes
@@ -386,6 +390,40 @@
               <div><strong>28</strong><span>assinantes ativos</span></div>
               <div><strong>6</strong><span>renovações na semana</span></div>
               <div><strong>3</strong><span>risco de cancelamento</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="workspace-grid view" id="billing">
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <span class="eyebrow">Plano Business Barber</span>
+                <h2>Assinatura da barbearia</h2>
+              </div>
+            </div>
+            <div class="billing-card">
+              <span>Status atual</span>
+              <strong id="billingStatus">Aguardando assinatura</strong>
+              <p>Ative o plano mensal do Business Barber para liberar a operação comercial da barbearia com agenda, clientes, WhatsApp e relatórios.</p>
+              <div class="billing-actions">
+                <button class="primary-button" id="startCheckout" type="button">Assinar agora</button>
+                <button class="secondary-button" id="manageBilling" type="button">Gerenciar assinatura</button>
+              </div>
+              <p class="muted" id="billingMessage">Plano piloto: R$ 197/mês.</p>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <span class="eyebrow">Como funciona</span>
+                <h2>Pagamento seguro via Stripe</h2>
+              </div>
+            </div>
+            <div class="setup-list">
+              <article><strong>1. Checkout</strong><span>O dono da barbearia paga no ambiente seguro da Stripe.</span></article>
+              <article><strong>2. Webhook</strong><span>A Stripe avisa o Business Barber quando a assinatura ficar ativa.</span></article>
+              <article><strong>3. Acesso</strong><span>O painel pode liberar, pausar ou sinalizar pendências de pagamento.</span></article>
             </div>
           </div>
         </section>
