@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Business Barber | Admin</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <section class="login-screen" id="adminLoginScreen" aria-label="Login administrativo">
+      <form class="login-card" id="adminLoginForm">
+        <div class="brand-mark"><img src="assets/business-barber-logo.png" alt="Business Barber" /></div>
+        <span class="eyebrow">Acesso restrito</span>
+        <h1>Painel do fundador</h1>
+        <p>Entre com o usuário administrador da plataforma.</p>
+        <label class="field">Email<input name="email" type="email" placeholder="admin@seudominio.com" autocomplete="username" required /></label>
+        <label class="field">Senha<input name="password" type="password" placeholder="Sua senha administrativa" autocomplete="current-password" required /></label>
+        <button class="primary-button full" type="submit">Entrar no admin</button>
+        <div class="login-links"><a href="/">Voltar ao site</a></div>
+      </form>
+    </section>
+
+    <div class="admin-shell" id="adminShell" hidden>
+      <aside class="admin-sidebar">
+        <div class="brand">
+          <div class="brand-mark"><img src="assets/business-barber-logo.png" alt="Business Barber" /></div>
+          <div>
+            <strong>Business Barber Admin</strong>
+            <span>Controle do fundador</span>
+          </div>
+        </div>
+        <nav class="nav-list">
+          <button class="nav-item active" data-admin-view="overview" type="button">Visão geral</button>
+          <button class="nav-item" data-admin-view="sales" type="button">Comercial</button>
+          <button class="nav-item" data-admin-view="proposal" type="button">Proposta</button>
+          <button class="nav-item" data-admin-view="pilot" type="button">Piloto</button>
+          <button class="nav-item" data-admin-view="ops" type="button">Operação</button>
+        </nav>
+        <a class="admin-return" href="/app.html">Abrir painel da barbearia</a>
+      </aside>
+
+      <main class="admin-main">
+        <header class="admin-topbar">
+          <div>
+            <span class="eyebrow">Painel do fundador</span>
+            <h1>Controle comercial e operacional do Business Barber</h1>
+            <p>Use esta área para vender, acompanhar pilotos, simular propostas, monitorar clientes SaaS e preparar a operação.</p>
+          </div>
+          <div class="topbar-actions">
+            <a class="secondary-button" href="/">Ver site</a>
+            <a class="secondary-button" href="/api/billing/checkout">Abrir checkout</a>
+            <a class="primary-button" href="/public.html?barbearia=barbearia-alpha" target="_blank" rel="noreferrer">Ver página pública</a>
+          </div>
+        </header>
+
+        <section class="admin-view active" id="admin-overview">
+          <div class="admin-metric-grid" id="adminMetrics"></div>
+          <div class="admin-grid">
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <span class="eyebrow">Clientes SaaS</span>
+                  <h2>Barbearias cadastradas</h2>
+                </div>
+              </div>
+              <div class="compact-list" id="adminBarbershops"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <span class="eyebrow">Saúde do produto</span>
+                  <h2>Checklist de prontidão</h2>
+                </div>
+              </div>
+              <div class="admin-checklist" id="adminReadiness"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <span class="eyebrow">Uso do produto</span>
+                  <h2>Convites e encaixes</h2>
+                </div>
+              </div>
+              <div class="compact-list" id="adminInviteActivity"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="admin-view" id="admin-sales">
+          <div class="admin-grid">
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <span class="eyebrow">Pipeline</span>
+                  <h2>Prospects e pilotos</h2>
+                </div>
+                <button class="secondary-button" id="adminExportProspects" type="button">Exportar CSV</button>
+              </div>
+              <div class="pipeline-board" id="adminPipeline"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <span class="eyebrow">Novo prospect</span>
+                  <h2>Cadastro rápido</h2>
+                </div>
+              </div>
+              <form class="prospect-form" id="adminProspectForm">
+                <label class="field">
+                  Barbearia
+                  <input name="barbershop" placeholder="Ex: Barbearia Central" required />
+                </label>
+                <label class="field">
+                  Dono
+                  <input name="owner" placeholder="Nome do dono" required />
+                </label>
+                <label class="field">
+                  Profissionais
+                  <input name="team" min="1" type="number" value="4" required />
+                </label>
+                <label class="field">
+                  Dor principal
+                  <input name="pain" placeholder="Ex: horários vagos na semana" required />
+                </label>
+                <button class="primary-button full" type="submit">Salvar prospect</button>
+              </form>
+              <div class="next-actions">
+                <strong>Meta sugerida</strong>
+                <p>10 conversas, 5 demonstrações e 3 pilotos pagos antes de investir em integrações pagas.</p>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="admin-view" id="admin-proposal">
+          <div class="admin-grid">
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <span class="eyebrow">Simulador</span>
+                  <h2>Preço e retorno para a barbearia</h2>
+                </div>
+              </div>
+              <div class="roi-grid">
+                <label class="field">
+                  Ticket médio
+                  <input id="adminTicket" min="1" type="number" value="85" />
+                </label>
+                <label class="field">
+                  Clientes recuperados/mês
+                  <input id="adminRecovered" min="0" type="number" value="5" />
+                </label>
+                <label class="field">
+                  Mensalidade
+                  <input id="adminMonthly" min="1" type="number" value="197" />
+                </label>
+              </div>
+              <div class="roi-result">
+                <article>
+                  <span>Receita recuperada</span>
+                  <strong id="adminRevenue">R$ 425</strong>
+                </article>
+                <article>
+                  <span>Saldo após mensalidade</span>
+                  <strong id="adminNet">R$ 228</strong>
+                </article>
+                <article>
+                  <span>Retorno</span>
+                  <strong id="adminRoi">2.2x</strong>
+                </article>
+              </div>
+            </section>
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <span class="eyebrow">Texto pronto</span>
+                  <h2>Proposta comercial</h2>
+                </div>
+                <button class="secondary-button" id="copyAdminProposal" type="button">Copiar</button>
+              </div>
+              <textarea id="adminProposalText" rows="12">Pelo que você comentou, a maior oportunidade está em recuperar clientes que não voltam e preencher horários vazios. Minha sugestão é fazer um piloto de 30 dias do Business Barber: R$ 197/mês + R$ 197 de implantação para os primeiros clientes. Eu configuro a primeira campanha com você e medimos clientes abordados, respostas, agendamentos e valor recuperado.</textarea>
+            </section>
+          </div>
+        </section>
+
+        <section class="admin-view" id="admin-pilot">
+          <div class="admin-grid">
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <span class="eyebrow">Roteiro de demonstração</span>
+                  <h2>Demo de 5 minutos</h2>
+                </div>
+              </div>
+              <div class="pilot-steps" id="adminPilotSteps"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <span class="eyebrow">Perguntas</span>
+                  <h2>Diagnóstico comercial</h2>
+                </div>
+              </div>
+              <div class="question-list" id="adminQuestions"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="admin-view" id="admin-ops">
+          <div class="admin-grid">
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <span class="eyebrow">Assinaturas</span>
+                  <h2>Stripe e cobrança</h2>
+                </div>
+                <a class="primary-button" href="/api/billing/checkout">Abrir checkout</a>
+              </div>
+              <div class="compact-list billing-admin-list">
+                <article>
+                  <div>
+                    <strong>Checkout do Business Barber</strong>
+                    <span>Use este link para testar ou enviar a assinatura mensal de R$ 197.</span>
+                  </div>
+                  <a class="tiny-button" href="/api/billing/checkout">Gerar checkout</a>
+                </article>
+                <article>
+                  <div>
+                    <strong>Webhook Stripe</strong>
+                    <span>Endpoint configurado: /api/stripe/webhook. Eventos de assinatura atualizam o status da barbearia quando vierem com metadata.</span>
+                  </div>
+                  <span class="status-pill good">Pronto</span>
+                </article>
+              </div>
+            </section>
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <span class="eyebrow">Operação</span>
+                  <h2>Checklist para vender</h2>
+                </div>
+              </div>
+              <div class="admin-checklist">
+                <label><input type="checkbox" checked disabled /> Supabase conectado</label>
+                <label><input type="checkbox" checked disabled /> WhatsApp testado</label>
+                <label><input type="checkbox" checked disabled /> Templates aprovados</label>
+                <label><input type="checkbox" checked disabled /> Stripe configurado</label>
+              </div>
+            </section>
+          </div>
+        </section>        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="admin.js"></script>
+  </body>
+</html>
