@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Começar piloto | Business Barber</title>
+    <meta name="description" content="Pré-cadastro do Business Barber antes do pagamento da assinatura." />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="cadastro.js" defer></script>
+  </head>
+  <body class="marketing-body checkout-body">
+    <header class="marketing-nav">
+      <a class="marketing-brand" href="/" aria-label="Business Barber">
+        <img src="assets/business-barber-logo.png" alt="" />
+        <div><strong>Business Barber</strong><span>Pré-cadastro do piloto</span></div>
+      </a>
+      <nav><a href="/">Voltar ao site</a><a class="nav-login" href="/app.html">Entrar</a></nav>
+    </header>
+    <main class="checkout-main onboarding-checkout-main">
+      <section class="checkout-copy">
+        <span class="eyebrow">Piloto acompanhado</span>
+        <h1>Comece seu piloto do Business Barber.</h1>
+        <p>Preencha os dados principais para vincular a assinatura à barbearia certa e liberar a implantação assistida do Business Barber.</p>
+        <div class="checkout-steps">
+          <article><strong>1</strong><span>Você informa quem é a barbearia e qual resultado quer buscar.</span></article>
+          <article><strong>2</strong><span>O pagamento é feito com segurança pela Stripe.</span></article>
+          <article><strong>3</strong><span>Nossa equipe conduz o onboarding e prepara a primeira campanha.</span></article>
+        </div>
+        <div class="onboarding-summary-card">
+          <span class="eyebrow">Depois do pagamento</span>
+          <h3>Depois do pagamento, ativamos com você</h3>
+          <ul>
+            <li>Serviços e preços principais</li>
+            <li>Horários de atendimento</li>
+            <li>Profissionais da barbearia</li>
+            <li>Clientes para primeira campanha</li>
+            <li>WhatsApp oficial da barbearia</li>
+          </ul>
+        </div>
+      </section>
+      <form class="checkout-form panel" id="signupCheckoutForm">
+        <span class="eyebrow">Plano piloto</span>
+        <h2>Business Barber — R$ 197/mês</h2>
+        <label class="field">Nome da barbearia<input name="barbershopName" placeholder="Ex: Barbearia Central" required /></label>
+        <label class="field">Nome do responsável<input name="ownerName" placeholder="Ex: João Silva" required /></label>
+        <label class="field">Email para acesso e cobrança<input name="email" type="email" placeholder="email@barbearia.com" required /></label>
+        <label class="field">WhatsApp com DDD<input name="whatsapp" inputmode="tel" placeholder="5566999999999" required /></label>
+        <div class="form-split">
+          <label class="field">Cidade<input name="city" placeholder="Ex: Sinop - MT" /></label>
+          <label class="field">Profissionais<input name="team" inputmode="numeric" type="number" min="1" value="1" /></label>
+        </div>
+        <label class="field">Instagram da barbearia<input name="instagram" placeholder="@sua_barbearia" /></label>
+        <label class="field">Principal objetivo<textarea name="notes" rows="3" placeholder="Ex: recuperar clientes sumidos, reduzir faltas ou preencher horários vagos"></textarea></label>
+        <button class="primary-button full" type="submit">Continuar para pagamento seguro</button>
+        <p class="muted" id="signupCheckoutMessage">Você será redirecionado para o checkout seguro da Stripe. Após o pagamento, vamos abrir o onboarding manual da sua barbearia.</p>
+        <a class="secondary-button full" href="https://wa.me/5566992589032?text=Ol%C3%A1%2C%20tenho%20uma%20d%C3%BAvida%20sobre%20o%20Business%20Barber%20antes%20de%20assinar." target="_blank" rel="noreferrer">Prefiro tirar uma dúvida no WhatsApp</a>
+      </form>
+    </main>
+  </body>
+</html>

@@ -48,7 +48,7 @@
           </div>
           <div class="topbar-actions">
             <a class="secondary-button" href="/">Ver site</a>
-            <a class="secondary-button" href="/api/billing/checkout">Abrir checkout</a>
+            <a class="secondary-button" href="/cadastro.html">Criar assinatura</a>
             <a class="primary-button" href="/public.html?barbearia=barbearia-alpha" target="_blank" rel="noreferrer">Ver página pública</a>
           </div>
         </header>
@@ -214,22 +214,14 @@
                   <span class="eyebrow">Assinaturas</span>
                   <h2>Stripe e cobrança</h2>
                 </div>
-                <a class="primary-button" href="/api/billing/checkout">Abrir checkout</a>
+                <a class="primary-button" href="/cadastro.html">Criar assinatura</a>
               </div>
-              <div class="compact-list billing-admin-list">
+              <div class="compact-list billing-admin-list" id="adminBillingList">
                 <article>
                   <div>
-                    <strong>Checkout do Business Barber</strong>
-                    <span>Use este link para testar ou enviar a assinatura mensal de R$ 197.</span>
+                    <strong>Carregando assinaturas...</strong>
+                    <span>Aguarde a leitura dos eventos e barbearias cadastradas.</span>
                   </div>
-                  <a class="tiny-button" href="/api/billing/checkout">Gerar checkout</a>
-                </article>
-                <article>
-                  <div>
-                    <strong>Webhook Stripe</strong>
-                    <span>Endpoint configurado: /api/stripe/webhook. Eventos de assinatura atualizam o status da barbearia quando vierem com metadata.</span>
-                  </div>
-                  <span class="status-pill good">Pronto</span>
                 </article>
               </div>
             </section>

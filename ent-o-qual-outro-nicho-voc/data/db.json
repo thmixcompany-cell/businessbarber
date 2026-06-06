@@ -17,7 +17,38 @@
       "closeTime": "19:00"
     }
   ],
-  "users": [],
+  "users": [
+    {
+      "id": "user-mpzzqdj7-81c63fa6",
+      "email": "admin@test.com",
+      "name": "Administrador Business Barber",
+      "role": "platform_admin",
+      "barbershopId": null,
+      "active": true,
+      "passwordHash": "scrypt:3f2a1cdaf622a39d347ec9e59971175c:561d0abb326b0a45641091bf739571dc0602dd9a1191b9ab91af792f52b3796563510dd125f74211a843e9483d9ebc07dc3eb49e1c1a6b22bdce2a388977aa6c",
+      "createdAt": "2026-06-04T21:11:41.896Z"
+    },
+    {
+      "id": "user-mpzzqdl4-341e113c",
+      "email": "demo@businessbarber.local",
+      "name": "Dono Demo",
+      "role": "owner",
+      "barbershopId": "shop-alpha",
+      "active": true,
+      "passwordHash": "scrypt:645226e79a7384592344a74eb09aa6b8:48aa4607d5d82b279bfc2f3ba91bcef215ba3c3f14304ecff01d406fe8530326439f6779370e653ce1bb107a85952058760ddc91dea2fb6756c75adad1caeae9",
+      "createdAt": "2026-06-04T21:11:41.964Z"
+    },
+    {
+      "id": "user-mpzzqdu9-476c2f14",
+      "name": "Diego",
+      "email": "diego.mpzzqdsc@example.com",
+      "role": "barber",
+      "barbershopId": "shop-alpha",
+      "active": true,
+      "passwordHash": "scrypt:06ffb651afff3086fff1e98e3095d3ef:39bd0b8f3ed747e2c64089924ae5886e9700aca9f4bdfcddc085532bccbe3101ae3faa2bf3dfd6182373bad108194aa2cdd87b75067ca5c57c47e8e12cc817fa",
+      "mustChangePassword": true
+    }
+  ],
   "recoveredRevenue": 7954,
   "openSlots": 0,
   "clients": [
@@ -137,7 +168,410 @@
       "barbershopId": "shop-alpha"
     }
   ],
-  "auditLogs": [],
+  "auditLogs": [
+    {
+      "id": "audit-mpzzqe11-8be70c1f",
+      "at": "2026-06-04T21:11:42.469Z",
+      "actor": "demo@businessbarber.local",
+      "action": "client.deleted_lgpd",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "id": "client-mpzzqdrx-47e9a521"
+      }
+    },
+    {
+      "id": "audit-mpzzqe0y-3f92b732",
+      "at": "2026-06-04T21:11:42.466Z",
+      "actor": "demo@businessbarber.local",
+      "action": "client.deleted_lgpd",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "id": "client-mpzzqds2-38a3c1dc"
+      }
+    },
+    {
+      "id": "audit-mpzzqe0u-b5c36867",
+      "at": "2026-06-04T21:11:42.463Z",
+      "actor": "demo@businessbarber.local",
+      "action": "appointment.deleted",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "id": "appt-mpzzqdse-dcfbbd30"
+      }
+    },
+    {
+      "id": "audit-mpzzqe0r-5403d0e5",
+      "at": "2026-06-04T21:11:42.459Z",
+      "actor": "demo@businessbarber.local",
+      "action": "appointment.deleted",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "id": "appt-mpzzqdsk-08b4af88"
+      }
+    },
+    {
+      "id": "audit-mpzzqe0o-0788f938",
+      "at": "2026-06-04T21:11:42.456Z",
+      "actor": "demo@businessbarber.local",
+      "action": "appointment.deleted",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "id": "appt-mpzzqdsu-3f4d74c9"
+      }
+    },
+    {
+      "id": "audit-mpzzqe0l-e42b5187",
+      "at": "2026-06-04T21:11:42.453Z",
+      "actor": "demo@businessbarber.local",
+      "action": "appointment.deleted",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "id": "appt-mpzzqdtw-85c9e30f"
+      }
+    },
+    {
+      "id": "audit-mpzzqe0i-9bbe1385",
+      "at": "2026-06-04T21:11:42.450Z",
+      "actor": "demo@businessbarber.local",
+      "action": "appointment.deleted",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "id": "appt-mpzzqdyd-cfe76581"
+      }
+    },
+    {
+      "id": "audit-mpzzqe0f-c0c6e123",
+      "at": "2026-06-04T21:11:42.447Z",
+      "actor": "demo@businessbarber.local",
+      "action": "appointment.deleted",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "id": "appt-mpzzqdvw-0df3cf80"
+      }
+    },
+    {
+      "id": "audit-mpzzqe0b-7c59d3e4",
+      "at": "2026-06-04T21:11:42.443Z",
+      "actor": "demo@businessbarber.local",
+      "action": "appointment.deleted",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "id": "appt-mpzzqdwb-06a68293"
+      }
+    },
+    {
+      "id": "audit-mpzzqe07-411f262a",
+      "at": "2026-06-04T21:11:42.439Z",
+      "actor": "demo@businessbarber.local",
+      "action": "campaign.deleted",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "id": "camp-mpzzqdyv-e3780b46"
+      }
+    },
+    {
+      "id": "audit-mpzzqdzn-2bf0b78f",
+      "at": "2026-06-04T21:11:42.419Z",
+      "actor": "public",
+      "action": "public_booking.requested",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "appointmentId": "appt-mpzzqdzn-2dcc045e"
+      }
+    },
+    {
+      "id": "audit-mpzzqdzb-51c630a7",
+      "at": "2026-06-04T21:11:42.407Z",
+      "actor": "public",
+      "action": "public_booking.requested",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "appointmentId": "appt-mpzzqdzb-00146f39"
+      }
+    },
+    {
+      "id": "audit-mpzzqdyz-743310bc",
+      "at": "2026-06-04T21:11:42.395Z",
+      "actor": "demo@businessbarber.local",
+      "action": "integration.whatsapp_tested",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "simulated": true,
+        "messageId": null
+      }
+    },
+    {
+      "id": "audit-mpzzqdyv-56bbcb5a",
+      "at": "2026-06-04T21:11:42.391Z",
+      "actor": "demo@businessbarber.local",
+      "action": "campaign.created",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "id": "camp-mpzzqdyv-e3780b46"
+      }
+    },
+    {
+      "id": "audit-mpzzqdyp-455290c0",
+      "at": "2026-06-04T21:11:42.385Z",
+      "actor": "meta",
+      "action": "whatsapp.webhook_received",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "entries": 1,
+        "phoneNumberIds": [
+          "123456789012345"
+        ],
+        "inboundMessages": 1,
+        "autoReplies": 1
+      }
+    },
+    {
+      "id": "audit-mpzzqdyp-e7c6600e",
+      "at": "2026-06-04T21:11:42.385Z",
+      "actor": "whatsapp",
+      "action": "slot_invite.auto_booked",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "inviteId": "invite-mpzzqdsc",
+        "appointmentId": "appt-mpzzqdyd-cfe76581",
+        "phone": "5599...0456"
+      }
+    },
+    {
+      "id": "audit-mpzzqdyh-1be40fb9",
+      "at": "2026-06-04T21:11:42.377Z",
+      "actor": "demo@businessbarber.local",
+      "action": "state.updated",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "collections": [
+          "messageHistory"
+        ]
+      }
+    },
+    {
+      "id": "audit-mpzzqdyd-d2b94517",
+      "at": "2026-06-04T21:11:42.373Z",
+      "actor": "demo@businessbarber.local",
+      "action": "appointment.created",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "id": "appt-mpzzqdyd-cfe76581"
+      }
+    },
+    {
+      "id": "audit-mpzzqdya-13e0bc30",
+      "at": "2026-06-04T21:11:42.370Z",
+      "actor": "diego.mpzzqdsc@example.com",
+      "action": "appointment.updated",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "id": "appt-mpzzqdvw-0df3cf80",
+        "role": "barber"
+      }
+    },
+    {
+      "id": "audit-mpzzqdxw-050a2ea5",
+      "at": "2026-06-04T21:11:42.356Z",
+      "actor": "diego.mpzzqdsc@example.com",
+      "action": "auth.login_success",
+      "barbershopId": "shop-alpha",
+      "metadata": {}
+    },
+    {
+      "id": "audit-mpzzqdwb-337abbe5",
+      "at": "2026-06-04T21:11:42.299Z",
+      "actor": "demo@businessbarber.local",
+      "action": "appointment.created",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "id": "appt-mpzzqdwb-06a68293"
+      }
+    },
+    {
+      "id": "audit-mpzzqdvw-6f58f6ce",
+      "at": "2026-06-04T21:11:42.284Z",
+      "actor": "demo@businessbarber.local",
+      "action": "appointment.created",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "id": "appt-mpzzqdvw-0df3cf80"
+      }
+    },
+    {
+      "id": "audit-mpzzqdvq-ac1ae9e8",
+      "at": "2026-06-04T21:11:42.278Z",
+      "actor": "demo@businessbarber.local",
+      "action": "user.created",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "id": "user-mpzzqdu9-476c2f14",
+        "role": "barber"
+      }
+    },
+    {
+      "id": "audit-mpzzqdu5-d46d4118",
+      "at": "2026-06-04T21:11:42.221Z",
+      "actor": "demo@businessbarber.local",
+      "action": "slot_invite.auto_run",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "attempted": 2,
+        "sent": 1
+      }
+    },
+    {
+      "id": "audit-mpzzqdu5-99a76f47",
+      "at": "2026-06-04T21:11:42.221Z",
+      "actor": "demo@businessbarber.local",
+      "action": "slot_invite.sent",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "inviteId": "invite-mpzzqdu5-a9339755",
+        "appointmentId": "appt-mpzzqdtw-85c9e30f",
+        "clientId": "client-mpzzqds2-38a3c1dc",
+        "simulated": true,
+        "status": "Sandbox: pronto"
+      }
+    },
+    {
+      "id": "audit-mpzzqdtw-97b365f0",
+      "at": "2026-06-04T21:11:42.212Z",
+      "actor": "demo@businessbarber.local",
+      "action": "appointment.created",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "id": "appt-mpzzqdtw-85c9e30f"
+      }
+    },
+    {
+      "id": "audit-mpzzqdts-dc4b6cf3",
+      "at": "2026-06-04T21:11:42.208Z",
+      "actor": "demo@businessbarber.local",
+      "action": "slot_invite.sent",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "inviteId": "invite-mpzzqdtr-f2500b15",
+        "appointmentId": "appt-mpzzqdsu-3f4d74c9",
+        "clientId": "client-mpzzqdrx-47e9a521",
+        "simulated": true,
+        "status": "Sandbox: pronto"
+      }
+    },
+    {
+      "id": "audit-mpzzqdsu-582a5d68",
+      "at": "2026-06-04T21:11:42.174Z",
+      "actor": "demo@businessbarber.local",
+      "action": "appointment.created",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "id": "appt-mpzzqdsu-3f4d74c9"
+      }
+    },
+    {
+      "id": "audit-mpzzqdsp-db9836ea",
+      "at": "2026-06-04T21:11:42.169Z",
+      "actor": "demo@businessbarber.local",
+      "action": "appointment_reminder.auto_run",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "attempted": 1,
+        "sent": 1,
+        "windowMinutes": 120
+      }
+    },
+    {
+      "id": "audit-mpzzqdsp-eaccf02e",
+      "at": "2026-06-04T21:11:42.169Z",
+      "actor": "demo@businessbarber.local",
+      "action": "appointment_reminder.sent",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "reminderId": "reminder-mpzzqdsp-b1a0fa63",
+        "appointmentId": "appt-mpzzqdsk-08b4af88",
+        "simulated": true,
+        "status": "Sandbox: lembrete pronto"
+      }
+    },
+    {
+      "id": "audit-mpzzqdsk-60f7db58",
+      "at": "2026-06-04T21:11:42.164Z",
+      "actor": "demo@businessbarber.local",
+      "action": "appointment.created",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "id": "appt-mpzzqdsk-08b4af88"
+      }
+    },
+    {
+      "id": "audit-mpzzqdsf-e2b273e0",
+      "at": "2026-06-04T21:11:42.159Z",
+      "actor": "demo@businessbarber.local",
+      "action": "appointment.created",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "id": "appt-mpzzqdse-dcfbbd30"
+      }
+    },
+    {
+      "id": "audit-mpzzqdsa-7615462a",
+      "at": "2026-06-04T21:11:42.154Z",
+      "actor": "demo@businessbarber.local",
+      "action": "whatsapp.template_sent",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "clientId": "client-mpzzqdrx-47e9a521",
+        "simulated": true
+      }
+    },
+    {
+      "id": "audit-mpzzqds2-436fc97c",
+      "at": "2026-06-04T21:11:42.147Z",
+      "actor": "demo@businessbarber.local",
+      "action": "client.created",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "id": "client-mpzzqds2-38a3c1dc"
+      }
+    },
+    {
+      "id": "audit-mpzzqdry-582787c3",
+      "at": "2026-06-04T21:11:42.142Z",
+      "actor": "demo@businessbarber.local",
+      "action": "client.created",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "id": "client-mpzzqdrx-47e9a521"
+      }
+    },
+    {
+      "id": "audit-mpzzqdrl-61f924de",
+      "at": "2026-06-04T21:11:42.129Z",
+      "actor": "admin@test.com",
+      "action": "auth.login_success",
+      "barbershopId": null,
+      "metadata": {}
+    },
+    {
+      "id": "audit-mpzzqdpx-a04f1662",
+      "at": "2026-06-04T21:11:42.070Z",
+      "actor": "demo@businessbarber.local",
+      "action": "integration.updated",
+      "barbershopId": "shop-alpha",
+      "metadata": {
+        "whatsapp": true,
+        "pix": true
+      }
+    },
+    {
+      "id": "audit-mpzzqdp1-4f794aad",
+      "at": "2026-06-04T21:11:42.037Z",
+      "actor": "demo@businessbarber.local",
+      "action": "auth.login_success",
+      "barbershopId": "shop-alpha",
+      "metadata": {}
+    }
+  ],
   "prospects": [
     {
       "barbershop": "Barbearia Alpha",
@@ -356,6 +790,42 @@
       "service": "Corte",
       "status": "Confirmado",
       "barbershopId": "shop-alpha"
+    },
+    {
+      "id": "appt-mpzzqdzb-00146f39",
+      "time": "23:40",
+      "barber": "Rafa",
+      "client": "Cliente Site",
+      "phone": "5566999999999",
+      "service": "Corte",
+      "status": "Solicitado",
+      "depositRequired": false,
+      "depositStatus": "nao_exigido",
+      "open": false,
+      "source": "public-booking",
+      "date": "2030-02-05",
+      "whatsappConsent": true,
+      "privacyAcceptedAt": "2026-06-04T21:11:42.407Z",
+      "createdAt": "2026-06-04T21:11:42.407Z",
+      "barbershopId": "shop-alpha"
+    },
+    {
+      "id": "appt-mpzzqdzn-2dcc045e",
+      "time": "10:00",
+      "barber": "Rafa",
+      "client": "Cliente Conflito",
+      "phone": "5566999999988",
+      "service": "Corte",
+      "status": "Solicitado",
+      "depositRequired": false,
+      "depositStatus": "nao_exigido",
+      "open": false,
+      "source": "public-booking",
+      "date": "2030-03-22",
+      "whatsappConsent": true,
+      "privacyAcceptedAt": "2026-06-04T21:11:42.419Z",
+      "createdAt": "2026-06-04T21:11:42.419Z",
+      "barbershopId": "shop-alpha"
     }
   ],
   "waitlist": [
@@ -413,229 +883,22 @@
   ],
   "messageHistory": [
     {
-      "id": "msg-mpnhavtz-a5mg",
-      "campaignId": "camp-mpnhavtz",
-      "client": "Lucas Andrade",
-      "phone": "559999900001",
-      "message": "Oi, Lucas Andrade! Aqui é da Barbearia Norte. Faz um tempo que você não aparece por aqui. Temos alguns horários essa semana e se quiser voltar, eu consigo reservar seu melhor horário pelo WhatsApp.",
-      "link": "https://wa.me/559999900001?text=Oi%2C%20Lucas%20Andrade!%20Aqui%20e%20da%20Barbearia%20Norte.%20Faz%20um%20tempo%20que%20voc%C3%AA%20n%C3%A3o%20aparece%20por%20aqui.%20Temos%20alguns%20hor%C3%A1rios%20essa%20semana%20e%20se%20quiser%20voltar%2C%20eu%20consigo%20reservar%20seu%20melhor%20hor%C3%A1rio%20pelo%20WhatsApp.",
-      "status": "Pronto para envio",
-      "createdAt": "2026-05-27T03:02:31.847Z",
-      "barbershopId": "shop-alpha"
-    },
-    {
-      "id": "msg-mpnhavtz-hfz0",
-      "campaignId": "camp-mpnhavtz",
-      "client": "Marcos Paulo",
-      "phone": "559999900002",
-      "message": "Oi, Marcos Paulo! Aqui é da Barbearia Norte. Faz um tempo que você não aparece por aqui. Temos alguns horários essa semana e se quiser voltar, eu consigo reservar seu melhor horário pelo WhatsApp.",
-      "link": "https://wa.me/559999900002?text=Oi%2C%20Marcos%20Paulo!%20Aqui%20e%20da%20Barbearia%20Norte.%20Faz%20um%20tempo%20que%20voc%C3%AA%20n%C3%A3o%20aparece%20por%20aqui.%20Temos%20alguns%20hor%C3%A1rios%20essa%20semana%20e%20se%20quiser%20voltar%2C%20eu%20consigo%20reservar%20seu%20melhor%20hor%C3%A1rio%20pelo%20WhatsApp.",
-      "status": "Pronto para envio",
-      "createdAt": "2026-05-27T03:02:31.847Z",
-      "barbershopId": "shop-alpha"
-    },
-    {
-      "id": "msg-mpnhavtz-0fp8",
-      "campaignId": "camp-mpnhavtz",
-      "client": "Bruno Vieira",
-      "phone": "559999900003",
-      "message": "Oi, Bruno Vieira! Aqui é da Barbearia Norte. Faz um tempo que você não aparece por aqui. Temos alguns horários essa semana e se quiser voltar, eu consigo reservar seu melhor horário pelo WhatsApp.",
-      "link": "https://wa.me/559999900003?text=Oi%2C%20Bruno%20Vieira!%20Aqui%20e%20da%20Barbearia%20Norte.%20Faz%20um%20tempo%20que%20voc%C3%AA%20n%C3%A3o%20aparece%20por%20aqui.%20Temos%20alguns%20hor%C3%A1rios%20essa%20semana%20e%20se%20quiser%20voltar%2C%20eu%20consigo%20reservar%20seu%20melhor%20hor%C3%A1rio%20pelo%20WhatsApp.",
-      "status": "Pronto para envio",
-      "createdAt": "2026-05-27T03:02:31.847Z",
-      "barbershopId": "shop-alpha"
-    },
-    {
-      "id": "msg-mpnh9bns-1e8w",
-      "campaignId": "camp-mpnh9bns",
-      "client": "Lucas Andrade",
-      "phone": "559999900001",
-      "message": "Oi, Lucas Andrade! Aqui é da Barbearia Norte. Faz um tempo que você não aparece por aqui. Temos alguns horários essa semana e se quiser voltar, eu consigo reservar seu melhor horário pelo WhatsApp.",
-      "link": "https://wa.me/559999900001?text=Oi%2C%20Lucas%20Andrade!%20Aqui%20e%20da%20Barbearia%20Norte.%20Faz%20um%20tempo%20que%20voc%C3%AA%20n%C3%A3o%20aparece%20por%20aqui.%20Temos%20alguns%20hor%C3%A1rios%20essa%20semana%20e%20se%20quiser%20voltar%2C%20eu%20consigo%20reservar%20seu%20melhor%20hor%C3%A1rio%20pelo%20WhatsApp.",
-      "status": "Pronto para envio",
-      "createdAt": "2026-05-27T03:01:19.048Z",
-      "barbershopId": "shop-alpha"
-    },
-    {
-      "id": "msg-mpnh9bns-megd",
-      "campaignId": "camp-mpnh9bns",
-      "client": "Marcos Paulo",
-      "phone": "559999900002",
-      "message": "Oi, Marcos Paulo! Aqui é da Barbearia Norte. Faz um tempo que você não aparece por aqui. Temos alguns horários essa semana e se quiser voltar, eu consigo reservar seu melhor horário pelo WhatsApp.",
-      "link": "https://wa.me/559999900002?text=Oi%2C%20Marcos%20Paulo!%20Aqui%20e%20da%20Barbearia%20Norte.%20Faz%20um%20tempo%20que%20voc%C3%AA%20n%C3%A3o%20aparece%20por%20aqui.%20Temos%20alguns%20hor%C3%A1rios%20essa%20semana%20e%20se%20quiser%20voltar%2C%20eu%20consigo%20reservar%20seu%20melhor%20hor%C3%A1rio%20pelo%20WhatsApp.",
-      "status": "Pronto para envio",
-      "createdAt": "2026-05-27T03:01:19.048Z",
-      "barbershopId": "shop-alpha"
-    },
-    {
-      "id": "msg-mpnh9bns-erht",
-      "campaignId": "camp-mpnh9bns",
-      "client": "Tiago Ramos",
-      "phone": "",
-      "message": "Oi, Tiago Ramos! Aqui é da Barbearia Norte. Faz um tempo que você não aparece por aqui. Temos alguns horários essa semana e se quiser voltar, eu consigo reservar seu melhor horário pelo WhatsApp.",
-      "link": "",
-      "status": "Pronto para envio",
-      "createdAt": "2026-05-27T03:01:19.048Z",
-      "barbershopId": "shop-alpha"
-    },
-    {
-      "id": "msg-mpnh9bns-jc3l",
-      "campaignId": "camp-mpnh9bns",
-      "client": "Bruno Vieira",
-      "phone": "559999900003",
-      "message": "Oi, Bruno Vieira! Aqui é da Barbearia Norte. Faz um tempo que você não aparece por aqui. Temos alguns horários essa semana e se quiser voltar, eu consigo reservar seu melhor horário pelo WhatsApp.",
-      "link": "https://wa.me/559999900003?text=Oi%2C%20Bruno%20Vieira!%20Aqui%20e%20da%20Barbearia%20Norte.%20Faz%20um%20tempo%20que%20voc%C3%AA%20n%C3%A3o%20aparece%20por%20aqui.%20Temos%20alguns%20hor%C3%A1rios%20essa%20semana%20e%20se%20quiser%20voltar%2C%20eu%20consigo%20reservar%20seu%20melhor%20hor%C3%A1rio%20pelo%20WhatsApp.",
-      "status": "Pronto para envio",
-      "createdAt": "2026-05-27T03:01:19.048Z",
-      "barbershopId": "shop-alpha"
-    },
-    {
-      "id": "msg-mpnh9bns-x166",
-      "campaignId": "camp-mpnh9bns",
-      "client": "Henrique Costa",
-      "phone": "",
-      "message": "Oi, Henrique Costa! Aqui é da Barbearia Norte. Faz um tempo que você não aparece por aqui. Temos alguns horários essa semana e se quiser voltar, eu consigo reservar seu melhor horário pelo WhatsApp.",
-      "link": "",
-      "status": "Pronto para envio",
-      "createdAt": "2026-05-27T03:01:19.048Z",
-      "barbershopId": "shop-alpha"
-    },
-    {
-      "id": "msg-mpnh8w3a-y5io",
-      "campaignId": "camp-mpnh8w3a",
-      "client": "Lucas Andrade",
-      "phone": "559999900001",
-      "message": "Oi, Lucas Andrade! Aqui é da Barbearia Norte. Faz um tempo que você não aparece por aqui. Temos alguns horários essa semana e se quiser voltar, eu consigo reservar seu melhor horário pelo WhatsApp.",
-      "link": "https://wa.me/559999900001?text=Oi%2C%20Lucas%20Andrade!%20Aqui%20e%20da%20Barbearia%20Norte.%20Faz%20um%20tempo%20que%20voc%C3%AA%20n%C3%A3o%20aparece%20por%20aqui.%20Temos%20alguns%20hor%C3%A1rios%20essa%20semana%20e%20se%20quiser%20voltar%2C%20eu%20consigo%20reservar%20seu%20melhor%20hor%C3%A1rio%20pelo%20WhatsApp.",
-      "status": "Pronto para envio",
-      "createdAt": "2026-05-27T03:00:58.870Z",
-      "barbershopId": "shop-alpha"
-    },
-    {
-      "id": "msg-mpnh8w3a-s3ep",
-      "campaignId": "camp-mpnh8w3a",
-      "client": "Marcos Paulo",
-      "phone": "559999900002",
-      "message": "Oi, Marcos Paulo! Aqui é da Barbearia Norte. Faz um tempo que você não aparece por aqui. Temos alguns horários essa semana e se quiser voltar, eu consigo reservar seu melhor horário pelo WhatsApp.",
-      "link": "https://wa.me/559999900002?text=Oi%2C%20Marcos%20Paulo!%20Aqui%20e%20da%20Barbearia%20Norte.%20Faz%20um%20tempo%20que%20voc%C3%AA%20n%C3%A3o%20aparece%20por%20aqui.%20Temos%20alguns%20hor%C3%A1rios%20essa%20semana%20e%20se%20quiser%20voltar%2C%20eu%20consigo%20reservar%20seu%20melhor%20hor%C3%A1rio%20pelo%20WhatsApp.",
-      "status": "Pronto para envio",
-      "createdAt": "2026-05-27T03:00:58.870Z",
-      "barbershopId": "shop-alpha"
-    },
-    {
-      "id": "msg-mpnh8w3a-8b0t",
-      "campaignId": "camp-mpnh8w3a",
-      "client": "Tiago Ramos",
-      "phone": "",
-      "message": "Oi, Tiago Ramos! Aqui é da Barbearia Norte. Faz um tempo que você não aparece por aqui. Temos alguns horários essa semana e se quiser voltar, eu consigo reservar seu melhor horário pelo WhatsApp.",
-      "link": "",
-      "status": "Pronto para envio",
-      "createdAt": "2026-05-27T03:00:58.870Z",
-      "barbershopId": "shop-alpha"
-    },
-    {
-      "id": "msg-mpnh8w3a-5027",
-      "campaignId": "camp-mpnh8w3a",
-      "client": "Bruno Vieira",
-      "phone": "559999900003",
-      "message": "Oi, Bruno Vieira! Aqui é da Barbearia Norte. Faz um tempo que você não aparece por aqui. Temos alguns horários essa semana e se quiser voltar, eu consigo reservar seu melhor horário pelo WhatsApp.",
-      "link": "https://wa.me/559999900003?text=Oi%2C%20Bruno%20Vieira!%20Aqui%20e%20da%20Barbearia%20Norte.%20Faz%20um%20tempo%20que%20voc%C3%AA%20n%C3%A3o%20aparece%20por%20aqui.%20Temos%20alguns%20hor%C3%A1rios%20essa%20semana%20e%20se%20quiser%20voltar%2C%20eu%20consigo%20reservar%20seu%20melhor%20hor%C3%A1rio%20pelo%20WhatsApp.",
-      "status": "Pronto para envio",
-      "createdAt": "2026-05-27T03:00:58.870Z",
-      "barbershopId": "shop-alpha"
-    },
-    {
-      "id": "msg-mpnh8w3a-rwki",
-      "campaignId": "camp-mpnh8w3a",
-      "client": "Henrique Costa",
-      "phone": "",
-      "message": "Oi, Henrique Costa! Aqui é da Barbearia Norte. Faz um tempo que você não aparece por aqui. Temos alguns horários essa semana e se quiser voltar, eu consigo reservar seu melhor horário pelo WhatsApp.",
-      "link": "",
-      "status": "Pronto para envio",
-      "createdAt": "2026-05-27T03:00:58.870Z",
-      "barbershopId": "shop-alpha"
-    },
-    {
-      "id": "msg-mplm626p-4zg8",
-      "campaignId": "camp-mplm626p",
-      "client": "Lucas Andrade",
-      "phone": "559999900001",
-      "message": "Oi, Lucas Andrade! Aqui é da Barbearia Norte. Faz um tempo que você não aparece por aqui. Temos alguns horários essa semana e se quiser voltar, eu consigo reservar seu melhor horário pelo WhatsApp.",
-      "link": "https://wa.me/559999900001text=Oi%2C%20Lucas%20Andrade!%20Aqui%20e%20da%20Barbearia%20Norte.%20Faz%20um%20tempo%20que%20voc%C3%AA%20n%C3%A3o%20aparece%20por%20aqui.%20Temos%20alguns%20hor%C3%A1rios%20essa%20semana%20e%20se%20quiser%20voltar%2C%20eu%20consigo%20reservar%20seu%20melhor%20hor%C3%A1rio%20pelo%20WhatsApp.",
-      "status": "Aberta no WhatsApp",
-      "createdAt": "2026-05-25T19:43:12.529Z",
-      "barbershopId": "shop-alpha"
-    },
-    {
-      "id": "msg-mplm626p-6fnl",
-      "campaignId": "camp-mplm626p",
-      "client": "Marcos Paulo",
-      "phone": "559999900002",
-      "message": "Oi, Marcos Paulo! Aqui é da Barbearia Norte. Faz um tempo que você não aparece por aqui. Temos alguns horários essa semana e se quiser voltar, eu consigo reservar seu melhor horário pelo WhatsApp.",
-      "link": "https://wa.me/559999900002text=Oi%2C%20Marcos%20Paulo!%20Aqui%20e%20da%20Barbearia%20Norte.%20Faz%20um%20tempo%20que%20voc%C3%AA%20n%C3%A3o%20aparece%20por%20aqui.%20Temos%20alguns%20hor%C3%A1rios%20essa%20semana%20e%20se%20quiser%20voltar%2C%20eu%20consigo%20reservar%20seu%20melhor%20hor%C3%A1rio%20pelo%20WhatsApp.",
-      "status": "Pronto para envio",
-      "createdAt": "2026-05-25T19:43:12.529Z",
-      "barbershopId": "shop-alpha"
-    },
-    {
-      "id": "msg-mplm626p-v2az",
-      "campaignId": "camp-mplm626p",
-      "client": "Bruno Vieira",
-      "phone": "559999900003",
-      "message": "Oi, Bruno Vieira! Aqui é da Barbearia Norte. Faz um tempo que você não aparece por aqui. Temos alguns horários essa semana e se quiser voltar, eu consigo reservar seu melhor horário pelo WhatsApp.",
-      "link": "https://wa.me/559999900003text=Oi%2C%20Bruno%20Vieira!%20Aqui%20e%20da%20Barbearia%20Norte.%20Faz%20um%20tempo%20que%20voc%C3%AA%20n%C3%A3o%20aparece%20por%20aqui.%20Temos%20alguns%20hor%C3%A1rios%20essa%20semana%20e%20se%20quiser%20voltar%2C%20eu%20consigo%20reservar%20seu%20melhor%20hor%C3%A1rio%20pelo%20WhatsApp.",
-      "status": "Pronto para envio",
-      "createdAt": "2026-05-25T19:43:12.529Z",
-      "barbershopId": "shop-alpha"
-    },
-    {
-      "id": "msg-mplm37r5",
+      "id": "invite-mpzzqdsc",
       "type": "slot_invite",
-      "client": "Bruno Vieira",
-      "phone": "559999900003",
-      "message": "Oi, Bruno Vieira! Aqui é da Barbearia Alpha. Abriu um horário hoje às 14:00 com Rafa para Corte rápido. Quer que eu reserve para você",
-      "link": "https://wa.me/559999900003text=Oi%2C%20Bruno%20Vieira!%20Aqui%20%C3%A9%20da%20Barbearia%20Alpha.%20Abriu%20um%20hor%C3%A1rio%20hoje%20%C3%A0s%2014%3A00%20com%20Rafa%20para%20Corte%20r%C3%A1pido.%20Quer%20que%20eu%20reserve%20para%20voc%C3%AA%3F",
+      "appointmentId": "appt-mpzzqdyd-cfe76581",
+      "client": "Cliente Convite",
+      "phone": "559999900456",
       "status": "Agendado",
-      "appointmentIndex": 3,
-      "time": "14:00",
-      "barber": "Rafa",
-      "service": "Corte rápido",
-      "value": 130,
-      "createdAt": "2026-05-25T19:40:59.777Z",
-      "barbershopId": "shop-alpha"
-    },
-    {
-      "id": "msg-mplm32q8",
-      "type": "slot_invite",
-      "client": "Lucas Andrade",
-      "phone": "559999900001",
-      "message": "Oi, Lucas Andrade! Aqui é da Barbearia Alpha. Abriu um horário hoje às 10:00 com Diego. Quer que eu reserve para você",
-      "link": "https://wa.me/559999900001text=Oi%2C%20Lucas%20Andrade!%20Aqui%20%C3%A9%20da%20Barbearia%20Alpha.%20Abriu%20um%20hor%C3%A1rio%20hoje%20%C3%A0s%2010%3A00%20com%20Diego.%20Quer%20que%20eu%20reserve%20para%20voc%C3%AA%3F",
-      "status": "Agendado",
-      "appointmentIndex": 1,
-      "time": "10:00",
+      "time": "21:00",
       "barber": "Diego",
-      "service": "Corte ou barba",
-      "value": 85,
-      "createdAt": "2026-05-25T19:40:53.264Z",
-      "barbershopId": "shop-alpha"
-    },
-    {
-      "id": "msg-mpllr5qw",
-      "type": "slot_invite",
-      "client": "Lucas Andrade",
-      "phone": "559999900001",
-      "message": "Oi, Lucas Andrade! Aqui é da Barbearia Alpha. Abriu um horário hoje às 10:00 com Diego. Quer que eu reserve para você",
-      "link": "https://wa.me/559999900001text=Oi%2C%20Lucas%20Andrade!%20Aqui%20%C3%A9%20da%20Barbearia%20Alpha.%20Abriu%20um%20hor%C3%A1rio%20hoje%20%C3%A0s%2010%3A00%20com%20Diego.%20Quer%20que%20eu%20reserve%20para%20voc%C3%AA%3F",
-      "status": "Cliente respondeu",
-      "appointmentIndex": 1,
-      "time": "10:00",
-      "barber": "Diego",
-      "service": "Corte ou barba",
-      "value": 85,
-      "createdAt": "2026-05-25T19:31:37.305Z",
-      "updatedAt": "2026-05-25T19:39:08.658Z",
-      "barbershopId": "shop-alpha"
+      "service": "Corte",
+      "createdAt": "2026-06-04T21:11:42.375Z",
+      "barbershopId": "shop-alpha",
+      "responseText": "Sim",
+      "responseIntent": "positive",
+      "respondedAt": "2026-06-04T21:11:42.384Z",
+      "providerResponseId": "wamid.mpzzqdsc",
+      "bookedAt": "2026-06-04T21:11:42.385Z"
     }
   ],
   "pixCharges": [],
@@ -650,15 +913,30 @@
   "integrationsByShop": {
     "shop-alpha": {
       "whatsapp": {
+        "accessToken": "EAATEST_SECRET_TOKEN",
+        "phoneNumberId": "123456789012345",
+        "appSecret": "app_secret_teste",
+        "verifyToken": "verify_token_teste",
+        "businessAccountId": "",
+        "wabaId": "",
+        "displayPhoneNumber": "",
+        "verifiedName": "",
+        "embeddedSignupConnectedAt": "",
         "provider": "whatsapp_cloud_api",
+        "mode": "sandbox",
         "defaultTemplate": "retorno_cliente_sumido",
-        "templateLanguage": "pt_BR"
+        "templateLanguage": "pt_BR",
+        "slotInviteTemplate": "encaixe_horario_vago",
+        "reminderTemplate": "lembrete_agendamento",
+        "status": "sandbox_pronto",
+        "lastTestAt": "2026-06-04T21:11:42.395Z"
       },
       "pix": {
         "provider": "manual_pix",
         "mode": "manual",
         "depositAmount": 15,
-        "status": "configuracao_manual"
+        "status": "configuracao_manual",
+        "key": ""
       }
     }
   },
@@ -690,5 +968,7 @@
         "done": true
       }
     ]
-  }
+  },
+  "stripeEvents": [],
+  "checkoutRequests": []
 }

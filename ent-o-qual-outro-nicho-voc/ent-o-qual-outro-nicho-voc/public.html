@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agendamento | Business Barber</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="public-body">
+    <header class="public-header">
+      <a href="/" class="marketing-brand"><img src="assets/business-barber-logo.png" alt="" /><div><strong>Business Barber</strong><span>Página do cliente</span></div></a>
+    </header>
+    <main class="public-page enhanced-public-page">
+      <section class="public-explainer">
+        <strong>Prévia da página pública da barbearia</strong>
+        <span>Este é o link que o cliente recebe para solicitar um horário. A equipe da barbearia confirma o pedido pelo WhatsApp.</span>
+      </section>
+      <section class="public-hero public-hero-premium">
+        <div class="public-shop-info">
+          <span class="eyebrow">Agendamento online</span>
+          <h1 id="publicShopName">Barbearia</h1>
+          <p id="publicHeadline">Escolha seu horário com segurança.</p>
+          <div class="public-meta" id="publicMeta"></div>
+        </div>
+        <div class="public-signal" id="publicDepositCard">
+          <strong>Reserva protegida</strong>
+          <span id="publicDepositText">A equipe confirma seu pedido pelo WhatsApp.</span>
+        </div>
+      </section>
+
+      <section class="public-services-showcase">
+        <span class="eyebrow">Serviços disponíveis</span>
+        <div class="service-showcase-grid" id="publicServiceCards"></div>
+      </section>
+
+      <section class="public-booking-shell">
+        <form class="public-booking-form" id="publicBookingForm">
+          <div class="panel-header">
+            <div><span class="eyebrow">Solicitar horário</span><h2>Finalize seu agendamento</h2></div>
+          </div>
+          <input class="honeypot" tabindex="-1" autocomplete="off" name="website" aria-hidden="true" />
+          <label class="field">Nome<input name="client" placeholder="Seu nome completo" maxlength="100" required /></label>
+          <label class="field">WhatsApp<input name="phone" inputmode="tel" placeholder="(66) 99999-9999" maxlength="20" required /></label>
+          <div class="roi-grid">
+            <label class="field">Serviço<select id="publicService" name="service" required></select></label>
+            <label class="field">Profissional<select id="publicProfessional" name="barber" required></select></label>
+          </div>
+          <div class="roi-grid">
+            <label class="field">Data<input id="publicDate" name="date" type="date" required /></label>
+            <label class="field">Horário<select id="publicTime" name="time" required></select></label>
+          </div>
+          <label class="checkbox-row consent-row"><input id="publicWhatsappConsent" name="whatsappConsent" type="checkbox" required /> Autorizo contato pelo WhatsApp para confirmação e lembretes deste agendamento.</label>
+          <label class="checkbox-row consent-row"><input id="publicPrivacyAccepted" name="privacyAccepted" type="checkbox" required /> Li e aceito a <a href="/privacidade.html" target="_blank" rel="noreferrer">Política de Privacidade</a> e a política de cancelamento.</label>
+          <button class="primary-button full" type="submit">Solicitar agendamento</button>
+          <p class="public-feedback" id="publicFeedback">A solicitação só vira reserva após confirmação da equipe.</p>
+        </form>
+
+        <aside class="public-summary">
+          <span class="eyebrow">Como funciona</span>
+          <div class="mini-list">
+            <div><strong>1</strong><span>Escolha serviço, profissional e horário.</span></div>
+            <div><strong>2</strong><span>A equipe confirma pelo WhatsApp.</span></div>
+            <div><strong>3</strong><span>Se houver sinal, você recebe as instruções após a confirmação.</span></div>
+          </div>
+          <div class="public-policy"><strong>Cancelamento</strong><p>Consulte a política da barbearia antes de realizar qualquer sinal.</p></div>
+        </aside>
+      </section>
+    </main>
+    <footer class="marketing-footer"><span>Agendamento protegido por Business Barber</span><div><a href="/privacidade.html">Privacidade</a><a href="/termos.html">Termos</a></div></footer>
+    <script src="public-booking.js"></script>
+  </body>
+</html>

@@ -4,8 +4,8 @@ WORKDIR /app
 
 COPY package.json ./
 COPY server.mjs ./
-COPY index.html app.html admin.html public.html privacidade.html termos.html cadastro.html sucesso.html onboarding.html ./
-COPY app.js admin.js public-booking.js cadastro.js sucesso.js styles.css ./
+COPY index.html app.html admin.html public.html privacidade.html termos.html ./
+COPY app.js admin.js public-booking.js styles.css ./
 COPY assets ./assets
 COPY data/db.json ./data/db.json
 COPY *.md ./

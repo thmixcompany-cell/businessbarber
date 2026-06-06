@@ -109,185 +109,21 @@ function renderAdminInviteActivity() {
     : `<article><span>Nenhum convite de encaixe registrado ainda.</span></article>`;
 }
 
-function billingLabel(status) {
-  const map = { active: "Ativa", trialing: "Em teste", pending_payment: "Pagamento pendente", paid: "Pago", past_due: "Pagamento atrasado", unpaid: "Inadimplente", canceled: "Cancelada", incomplete: "Incompleta", lead: "Lead", onboarding_pending: "Onboarding pendente", in_operation: "Em operação" };
-  return map[status] || status || "Sem assinatura";
-}
-
-function billingClass(status) {
-  if (["active", "trialing"].includes(status)) return "good";
-  if (["past_due", "unpaid", "canceled"].includes(status)) return "danger";
-  return "warning";
-}
-
-
-function onboardingLabel(shop) {
-  const billing = shop.billing || {};
-  const status = shop.subscriptionStatus || billing.status || shop.lifecycleStatus || "pending_payment";
-  if (["past_due", "unpaid"].includes(status)) return "Cobrança precisa de atenção";
-  if (status === "canceled") return "Assinatura cancelada";
-  if (["active", "trialing", "paid"].includes(status) && shop.lifecycleStatus !== "in_operation") return "Onboarding pendente";
-  if (shop.lifecycleStatus === "in_operation") return "Em operação";
-  return "Aguardando pagamento";
-}
-
-function onboardingClass(shop) {
-  const label = onboardingLabel(shop);
-  if (label === "Em operação") return "good";
-  if (label.includes("atenção") || label.includes("cancelada")) return "danger";
-  return "warning";
-}
-
-function shortStripe(id) { return id ? `${String(id).slice(0, 10)}...` : "não vinculado"; }
-
-function stripeEventLabel(type) {
-  const map = {
-    "checkout.session.completed": "Checkout concluído",
-    "customer.subscription.created": "Assinatura criada",
-    "customer.subscription.updated": "Assinatura atualizada",
-    "customer.subscription.deleted": "Assinatura cancelada",
-    "invoice.payment_succeeded": "Pagamento aprovado",
-    "invoice.payment_failed": "Pagamento falhou",
-  };
-  return map[type] || type || "Aguardando evento";
-}
-
-function stripeLinkedLabel(billing = {}) {
-  if (billing.subscriptionId) return "Assinatura vinculada";
-  if (billing.customerId) return "Cliente Stripe vinculado";
-  if (billing.lastEvent) return "Evento recebido";
-  return "Aguardando checkout";
-}
-
-function nextStepLabel(shop) {
-  const billing = shop.billing || {};
-  const status = shop.subscriptionStatus || billing.status || shop.lifecycleStatus || "pending_payment";
-  if (["past_due", "unpaid"].includes(status)) return "Regularizar cobrança";
-  if (status === "canceled") return "Reativar assinatura";
-  if (["active", "trialing", "paid"].includes(status) && shop.lifecycleStatus !== "in_operation") return "Concluir onboarding";
-  if (shop.lifecycleStatus === "in_operation") return "Acompanhar operação";
-  return "Aguardar pagamento";
-}
-
-function renewalLabel(billing = {}) {
-  if (!billing.currentPeriodEnd) return "Renovação a confirmar";
-  return `Renova em ${new Date(billing.currentPeriodEnd).toLocaleDateString("pt-BR")}`;
-}
-
-function safeText(value, fallback = "Não informado") {
-  return value ? String(value) : fallback;
-}
-
-function whatsappLinkForShop(shop) {
-  const phone = String(shop.ownerWhatsapp || "5566992589032").replace(/\D/g, "") || "5566992589032";
-  const text = `Olá, ${shop.ownerName || "tudo bem"}! Pagamento recebido no Business Barber. Vamos concluir o onboarding da ${shop.name || "barbearia"}?`;
-  return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
-}
-
 function renderAdminBarbershops() {
-  const shops = [...(adminState.barbershops || [])].sort((a, b) => String(b.billing?.lastEventAt || b.createdAt || "").localeCompare(String(a.billing?.lastEventAt || a.createdAt || "")));
   document.querySelector("#adminBarbershops").innerHTML =
-    shops.map((shop) => {
-      const billing = shop.billing || {};
-      const status = shop.subscriptionStatus || billing.status || (shop.active !== false ? "active" : "pending_payment");
-      const publicHref = shop.slug ? `/public.html?barbearia=${encodeURIComponent(shop.slug)}` : "/public.html?barbearia=barbearia-alpha";
-      const next = nextStepLabel(shop);
-      const lastEvent = stripeEventLabel(billing.lastEvent);
-      const hasStripe = Boolean(billing.subscriptionId || billing.customerId || billing.lastEvent);
-      return `
-        <article class="barbershop-admin-card commercial-admin-card polished-shop-card">
-          <div class="shop-card-main">
-            <div class="shop-card-title-row">
-              <div>
-                <strong>${shop.name || "Barbearia sem nome"}</strong>
-                <span>${safeText(shop.city, "Cidade não informada")} · ${safeText(shop.ownerName, "Responsável não informado")} · ${adminMoney.format(Number(shop.monthlyPrice || 197))}/mês</span>
-              </div>
-              <span class="status-pill ${billingClass(status)}">${billingLabel(status)}</span>
+    (adminState.barbershops || [])
+      .map(
+        (shop) => `
+          <article>
+            <div>
+              <strong>${shop.name}</strong>
+              <span>${shop.city || "Cidade não informada"} · ${shop.plan || "Plano"} · ${adminMoney.format(Number(shop.monthlyPrice || 0))}/mês</span>
             </div>
-            <div class="shop-contact-line">
-              <span>${safeText(shop.ownerEmail, "sem email")}</span>
-              ${shop.ownerWhatsapp ? `<span>${shop.ownerWhatsapp}</span>` : ""}
-              ${shop.instagram ? `<span>${shop.instagram}</span>` : ""}
-            </div>
-            <div class="shop-badge-row">
-              <span class="commercial-badge ${hasStripe ? "good" : "warning"}">${stripeLinkedLabel(billing)}</span>
-              <span class="commercial-badge ${billing.lastEvent ? "good" : "warning"}">${lastEvent}</span>
-              <span class="commercial-badge muted">${renewalLabel(billing)}</span>
-              <span class="commercial-badge ${onboardingClass(shop)}">${next}</span>
-            </div>
-            <details class="technical-details">
-              <summary>Detalhes técnicos</summary>
-              <span>Cliente Stripe: ${shortStripe(billing.customerId)}</span>
-              <span>Assinatura: ${shortStripe(billing.subscriptionId)}</span>
-              <span>Última atualização: ${billing.lastEventAt ? new Date(billing.lastEventAt).toLocaleString("pt-BR") : "não informada"}</span>
-            </details>
-          </div>
-          <div class="card-side-actions polished-actions">
-            <a class="tiny-button" href="${whatsappLinkForShop(shop)}" target="_blank" rel="noreferrer">Onboarding</a>
-            <a class="tiny-button" href="${publicHref}" target="_blank" rel="noreferrer">Página pública</a>
-          </div>
-        </article>
-      `;
-    }).join("") || `<article><span>Nenhuma barbearia cadastrada.</span></article>`;
-}
-
-function renderAdminBilling() {
-  const container = document.querySelector("#adminBillingList");
-  if (!container) return;
-  const shops = [...(adminState.barbershops || [])].sort((a, b) => String(b.billing?.lastEventAt || b.createdAt || "").localeCompare(String(a.billing?.lastEventAt || a.createdAt || "")));
-  const recentEvents = (adminState.stripeEvents || []).slice(0, 6);
-  const pending = shops.filter((shop) => ["pending_payment", "incomplete", "lead"].includes(String(shop.subscriptionStatus || shop.billing?.status || ""))).length;
-  const active = shops.filter((shop) => ["active", "trialing"].includes(String(shop.subscriptionStatus || shop.billing?.status || ""))).length;
-  const attention = shops.filter((shop) => ["past_due", "unpaid", "canceled"].includes(String(shop.subscriptionStatus || shop.billing?.status || ""))).length;
-  container.innerHTML = `
-    <article class="billing-summary-row commercial-admin-card polished-summary-card">
-      <div>
-        <strong>Resumo de cobrança e onboarding</strong>
-        <span>${active} ativas · ${pending} pendentes · ${attention} com atenção · ${recentEvents.length} eventos recentes do Stripe</span>
-      </div>
-      <a class="tiny-button" href="/cadastro.html">Cadastrar novo cliente</a>
-    </article>
-    ${shops.map((shop) => {
-      const billing = shop.billing || {};
-      const status = shop.subscriptionStatus || billing.status || "pending_payment";
-      return `
-        <article class="billing-admin-card commercial-admin-card polished-shop-card">
-          <div class="shop-card-main">
-            <div class="shop-card-title-row">
-              <div>
-                <strong>${shop.name || "Barbearia"}</strong>
-                <span>${safeText(shop.ownerName, "Responsável não informado")} · ${safeText(shop.ownerEmail, "sem email")} · ${safeText(shop.ownerWhatsapp, "sem WhatsApp")}</span>
-              </div>
-              <span class="status-pill ${billingClass(status)}">${billingLabel(status)}</span>
-            </div>
-            <div class="shop-badge-row">
-              <span class="commercial-badge ${billing.subscriptionId || billing.customerId ? "good" : "warning"}">${stripeLinkedLabel(billing)}</span>
-              <span class="commercial-badge ${billing.lastEvent ? "good" : "warning"}">${stripeEventLabel(billing.lastEvent)}</span>
-              <span class="commercial-badge muted">${renewalLabel(billing)}</span>
-              <span class="commercial-badge ${onboardingClass(shop)}">${nextStepLabel(shop)}</span>
-            </div>
-            <p class="admin-card-note">${billing.lastEventAt ? `Atualizado em ${new Date(billing.lastEventAt).toLocaleString("pt-BR")}` : "Aguardando o primeiro retorno do Stripe."}</p>
-            <details class="technical-details">
-              <summary>Detalhes técnicos</summary>
-              <span>Cliente Stripe: ${shortStripe(billing.customerId)}</span>
-              <span>Assinatura: ${shortStripe(billing.subscriptionId)}</span>
-              <span>Evento bruto: ${billing.lastEvent || "aguardando"}</span>
-            </details>
-          </div>
-          <div class="card-side-actions polished-actions">
-            <a class="tiny-button" href="${whatsappLinkForShop(shop)}" target="_blank" rel="noreferrer">Onboarding</a>
-            <a class="tiny-button" href="/onboarding.html" target="_blank" rel="noreferrer">Checklist</a>
-          </div>
-        </article>`;
-    }).join("")}
-    <article class="stripe-events-card commercial-admin-card polished-summary-card">
-      <div>
-        <strong>Eventos Stripe recentes</strong>
-        <span>${recentEvents.length ? recentEvents.map((event) => `${stripeEventLabel(event.type)}${event.matched ? " ✓" : ""}`).join(" · ") : "Endpoint configurado. Aguardando eventos."}</span>
-      </div>
-      <span class="status-pill good">Webhook pronto</span>
-    </article>
-  `;
+            <span class="status-pill ${shop.active !== false  ? "good" : "warning"}">${shop.active !== false  ? "Ativa" : "Pausada"}</span>
+          </article>
+        `,
+      )
+      .join("") || `<article><span>Nenhuma barbearia cadastrada.</span></article>`;
 }
 
 function renderReadiness() {
@@ -297,8 +133,6 @@ function renderReadiness() {
     ["Profissionais", (adminState.professionals || []).length > 0],
     ["Campanhas", (adminState.campaigns || []).length > 0],
     ["Página pública", Boolean(adminState.publicBooking.enabled)],
-    ["Stripe", (adminState.barbershops || []).some((shop) => shop.billing?.customerId || shop.billing?.lastEvent)],
-    ["Onboarding", (adminState.barbershops || []).some((shop) => shop.lifecycleStatus === "active" || shop.subscriptionStatus === "active")],
     ["Auditoria", (adminState.auditLogs || []).length > 0],
   ];
 
@@ -426,7 +260,6 @@ function renderAdminProposal() {
 function renderAdminAll() {
   renderAdminMetrics();
   renderAdminBarbershops();
-  renderAdminBilling();
   renderReadiness();
   renderAdminInviteActivity();
   renderAdminPipeline();

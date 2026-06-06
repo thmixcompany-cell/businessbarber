@@ -48,8 +48,8 @@
           </div>
           <div class="topbar-actions">
             <a class="secondary-button" href="/">Ver site</a>
-            <a class="secondary-button" href="/cadastro.html">Novo cliente</a>
-            <a class="primary-button" href="/onboarding.html" target="_blank" rel="noreferrer">Checklist onboarding</a>
+            <a class="secondary-button" href="/api/billing/checkout">Abrir checkout</a>
+            <a class="primary-button" href="/public.html?barbearia=barbearia-alpha" target="_blank" rel="noreferrer">Ver página pública</a>
           </div>
         </header>
 
@@ -212,16 +212,24 @@
               <div class="panel-header">
                 <div>
                   <span class="eyebrow">Assinaturas</span>
-                  <h2>Assinaturas e onboarding</h2>
+                  <h2>Stripe e cobrança</h2>
                 </div>
-                <a class="primary-button" href="/cadastro.html">Cadastrar novo cliente</a>
+                <a class="primary-button" href="/api/billing/checkout">Abrir checkout</a>
               </div>
-              <div class="compact-list billing-admin-list" id="adminBillingList">
+              <div class="compact-list billing-admin-list">
                 <article>
                   <div>
-                    <strong>Carregando assinaturas...</strong>
-                    <span>Aguarde a leitura dos eventos e barbearias cadastradas.</span>
+                    <strong>Checkout do Business Barber</strong>
+                    <span>Use este link para testar ou enviar a assinatura mensal de R$ 197.</span>
                   </div>
+                  <a class="tiny-button" href="/api/billing/checkout">Gerar checkout</a>
+                </article>
+                <article>
+                  <div>
+                    <strong>Webhook Stripe</strong>
+                    <span>Endpoint configurado: /api/stripe/webhook. Eventos de assinatura atualizam o status da barbearia quando vierem com metadata.</span>
+                  </div>
+                  <span class="status-pill good">Pronto</span>
                 </article>
               </div>
             </section>
@@ -232,21 +240,15 @@
                   <h2>Checklist para vender</h2>
                 </div>
               </div>
-              <div class="admin-checklist onboarding-admin-checklist">
-                <label><input type="checkbox" checked disabled /> Supabase conectado e persistindo clientes</label>
-                <label><input type="checkbox" checked disabled /> WhatsApp Cloud API testado com templates aprovados</label>
-                <label><input type="checkbox" checked disabled /> Stripe Checkout e Webhook configurados</label>
-                <label><input type="checkbox" checked disabled /> Pré-cadastro antes do pagamento ativo</label>
-                <label><input type="checkbox" disabled /> Onboarding manual concluído com o cliente pagante</label>
-              </div>
-              <div class="manual-onboarding-mini">
-                <strong>Roteiro pós-venda</strong>
-                <span>1. Confirmar dados da barbearia · 2. Configurar serviços e profissionais · 3. Importar clientes · 4. Testar WhatsApp · 5. Rodar primeira campanha.</span>
-                <a class="tiny-button" href="/onboarding.html" target="_blank" rel="noreferrer">Abrir checklist</a>
+              <div class="admin-checklist">
+                <label><input type="checkbox" checked disabled /> Supabase conectado</label>
+                <label><input type="checkbox" checked disabled /> WhatsApp testado</label>
+                <label><input type="checkbox" checked disabled /> Templates aprovados</label>
+                <label><input type="checkbox" checked disabled /> Stripe configurado</label>
               </div>
             </section>
           </div>
-        </section>
+        </section>        </section>
       </main>
     </div>
 

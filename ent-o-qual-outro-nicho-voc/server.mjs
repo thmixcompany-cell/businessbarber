@@ -37,8 +37,8 @@ const metaEmbeddedSignupConfigId = process.env.META_EMBEDDED_SIGNUP_CONFIG_ID ||
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY || "";
 const stripePriceId = process.env.STRIPE_PRICE_ID || "";
 const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
-const stripeSuccessUrl = process.env.STRIPE_SUCCESS_URL || `${appUrl.replace(/\/$/, "")}/app.html?billing=success&session_id={CHECKOUT_SESSION_ID}`;
-const stripeCancelUrl = process.env.STRIPE_CANCEL_URL || `${appUrl.replace(/\/$/, "")}/app.html?billing=cancel`;
+const stripeSuccessUrl = process.env.STRIPE_SUCCESS_URL || `${appUrl.replace(/\/$/, "")}/sucesso.html?session_id={CHECKOUT_SESSION_ID}`;
+const stripeCancelUrl = process.env.STRIPE_CANCEL_URL || `${appUrl.replace(/\/$/, "")}/cadastro.html?billing=cancel`;
 
 const tenantCollections = [
   "clients", "professionals", "services", "campaigns", "inactiveClients", "appointments", "waitlist", "clubPlans", "messageHistory", "pixCharges",
@@ -396,6 +396,18 @@ function appointmentTimeMs(appointment) {
 function normalizePhone(value) { return String(value || "").replace(/\D/g, "").slice(0, 15); }
 function validPhone(value) { const phone = normalizePhone(value); return phone.length >= 10 && phone.length <= 15; }
 function sanitizeText(value, max = 120) { return String(value || "").trim().replace(/[<>]/g, "").slice(0, max); }
+function sanitizeEmail(value) { return String(value || "").trim().toLowerCase().slice(0, 180); }
+function validEmail(value) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim()); }
+function slugify(value) { return String(value || "barbearia").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 70) || "barbearia"; }
+function uniqueSlug(db, base, excludeId = "") {
+  const root = slugify(base);
+  let slug = root;
+  let index = 2;
+  while ((db.barbershops || []).some((shop) => shop.id !== excludeId && shop.slug === slug)) {
+    slug = `${root}-${index++}`;
+  }
+  return slug;
+}
 function sanitizeCredential(value, max = 5000) { return String(value || "").trim().slice(0, max); }
 function graphUrl(pathname, params = {}) {
   const url = new URL(`https://graph.facebook.com/${graphVersion}${pathname}`);
@@ -1029,15 +1041,18 @@ async function stripeRequest(pathname, params) {
   return payload;
 }
 
-async function createStripeCheckoutSession({ db, user = null, shopId = "", source = "public" }) {
+async function createStripeCheckoutSession({ db, user = null, shopId = "", source = "public", signup = null }) {
   if (!stripeConfigured()) {
     const error = new Error("stripe_not_configured");
     error.statusCode = 503;
     throw error;
   }
   const shop = shopId ? db.barbershops.find((item) => item.id === shopId) : null;
-  const successUrl = stripeSuccessUrl || `${appUrl.replace(/\/$/, "")}/app.html?billing=success&session_id={CHECKOUT_SESSION_ID}`;
-  const cancelUrl = stripeCancelUrl || `${appUrl.replace(/\/$/, "")}/app.html?billing=cancel`;
+  const defaultSuccessUrl = `${appUrl.replace(/\/$/, "")}/sucesso.html?session_id={CHECKOUT_SESSION_ID}`;
+  const defaultCancelUrl = `${appUrl.replace(/\/$/, "")}/cadastro.html?billing=cancel`;
+  const successUrl = !stripeSuccessUrl || stripeSuccessUrl.includes("/app.html?billing=success") ? defaultSuccessUrl : stripeSuccessUrl;
+  const cancelUrl = !stripeCancelUrl || stripeCancelUrl.includes("/app.html?billing=cancel") ? defaultCancelUrl : stripeCancelUrl;
+  const contactEmail = signup?.email || user?.email || shop?.ownerEmail || "";
   const params = {
     mode: "subscription",
     "line_items[0][price]": stripePriceId,
@@ -1048,15 +1063,77 @@ async function createStripeCheckoutSession({ db, user = null, shopId = "", sourc
     client_reference_id: shopId || "public",
     "metadata[source]": source,
     "metadata[barbershop_id]": shopId || "",
-    "metadata[barbershop_name]": shop?.name || "",
+    "metadata[barbershop_name]": shop?.name || signup?.barbershopName || "",
+    "metadata[owner_name]": signup?.ownerName || shop?.ownerName || "",
+    "metadata[email]": contactEmail,
+    "metadata[whatsapp]": signup?.whatsapp || shop?.ownerWhatsapp || "",
+    "metadata[city]": signup?.city || shop?.city || "",
     "subscription_data[metadata][barbershop_id]": shopId || "",
     "subscription_data[metadata][source]": source,
+    "subscription_data[metadata][barbershop_name]": shop?.name || signup?.barbershopName || "",
+    "subscription_data[metadata][owner_name]": signup?.ownerName || shop?.ownerName || "",
+    "subscription_data[metadata][email]": contactEmail,
+    "subscription_data[metadata][whatsapp]": signup?.whatsapp || shop?.ownerWhatsapp || "",
+    "subscription_data[metadata][city]": signup?.city || shop?.city || "",
   };
-  if (user?.email) params.customer_email = user.email;
+  if (contactEmail) params.customer_email = contactEmail;
   const session = await stripeRequest("/checkout/sessions", params);
-  db.checkoutRequests.unshift({ id: makeId("checkout"), at: new Date().toISOString(), source, shopId: shopId || null, sessionId: session.id, url: session.url, actor: user?.email || "public" });
+  db.checkoutRequests.unshift({
+    id: makeId("checkout"), at: new Date().toISOString(), source, shopId: shopId || null,
+    sessionId: session.id, url: session.url, actor: contactEmail || user?.email || "public",
+    barbershopName: shop?.name || signup?.barbershopName || "", status: "checkout_created",
+  });
   db.checkoutRequests = db.checkoutRequests.slice(0, 100);
   return session;
+}
+
+async function createSignupCheckout(req, res) {
+  if (isRateLimited(req, "signup-checkout", 20)) return sendJson(res, 429, { error: "rate_limited" });
+  const body = await readBody(req);
+  const barbershopName = sanitizeText(body.barbershopName || body.barbershop || body.name, 120);
+  const ownerName = sanitizeText(body.ownerName || body.owner, 120);
+  const email = sanitizeEmail(body.email);
+  const whatsapp = normalizePhone(body.whatsapp || body.phone);
+  const city = sanitizeText(body.city, 80);
+  if (!barbershopName || !ownerName || !validEmail(email) || !validPhone(whatsapp)) {
+    return sendJson(res, 400, { error: "invalid_signup", message: "Informe barbearia, responsável, email válido e WhatsApp com DDD." });
+  }
+  const db = await readDb();
+  const now = new Date().toISOString();
+  let shop = (db.barbershops || []).find((item) => String(item.ownerEmail || "").toLowerCase() === email && ["pending_payment", "lead"].includes(String(item.subscriptionStatus || item.billing?.status || "")));
+  if (!shop) {
+    shop = {
+      id: makeId("shop"),
+      name: barbershopName,
+      slug: uniqueSlug(db, barbershopName),
+      city,
+      ownerName,
+      ownerEmail: email,
+      ownerWhatsapp: whatsapp,
+      plan: "Piloto",
+      monthlyPrice: 197,
+      active: false,
+      lifecycleStatus: "pending_payment",
+      subscriptionStatus: "pending_payment",
+      billing: { provider: "stripe", status: "pending_payment", source: "landing_signup" },
+      openTime: "09:00",
+      closeTime: "19:00",
+      createdAt: now,
+    };
+    db.barbershops.push(shop);
+  } else {
+    Object.assign(shop, { name: barbershopName, city, ownerName, ownerEmail: email, ownerWhatsapp: whatsapp, updatedAt: now });
+    shop.billing = { ...(shop.billing || {}), provider: "stripe", status: shop.billing?.status || "pending_payment", source: "landing_signup" };
+  }
+  db.prospects = Array.isArray(db.prospects) ? db.prospects : [];
+  if (!db.prospects.some((prospect) => String(prospect.email || "").toLowerCase() === email && prospect.barbershopId === shop.id)) {
+    db.prospects.unshift({ id: makeId("prospect"), barbershopId: shop.id, barbershop: barbershopName, owner: ownerName, email, whatsapp, city, team: 1, pain: "Cadastro iniciado pela landing", status: "Pagamento pendente", next: "Aguardar checkout Stripe", createdAt: now });
+  }
+  const session = await createStripeCheckoutSession({ db, shopId: shop.id, source: "landing_signup", signup: { barbershopName, ownerName, email, whatsapp, city } });
+  shop.billing = { ...(shop.billing || {}), checkoutSessionId: session.id, lastCheckoutAt: now, status: shop.billing?.status || "pending_payment" };
+  addAudit(db, "billing.signup_checkout_created", email, { shopId: shop.id, sessionId: session.id }, shop.id);
+  await writeDb(db);
+  return sendJson(res, 201, { url: session.url, shopId: shop.id, sessionId: session.id });
 }
 
 function parseStripeSignature(header = "") {
@@ -1075,17 +1152,23 @@ function verifyStripeSignature(rawBody, signatureHeader) {
 
 function updateShopBillingFromStripe(db, event) {
   const obj = event?.data?.object || {};
-  const meta = obj.metadata || {};
-  const shopId = meta.barbershop_id || obj.client_reference_id || obj.metadata?.barbershopId || "";
-  const shop = db.barbershops.find((item) => item.id === shopId);
+  const meta = obj.metadata || obj.subscription_details?.metadata || obj.parent?.subscription_details?.metadata || {};
+  const shopId = meta.barbershop_id || obj.client_reference_id || meta.barbershopId || "";
+  let shop = shopId ? db.barbershops.find((item) => item.id === shopId) : null;
+  if (!shop && obj.customer) shop = db.barbershops.find((item) => item.billing?.customerId === obj.customer);
   if (!shop) return { matched: false, shopId };
+  const now = new Date().toISOString();
+  const subscriptionId = obj.subscription || obj.id || shop.billing?.subscriptionId || "";
   shop.billing = {
     ...(shop.billing || {}),
     provider: "stripe",
     lastEvent: event.type,
-    lastEventAt: new Date().toISOString(),
+    lastEventAt: now,
     customerId: obj.customer || shop.billing?.customerId || "",
-    subscriptionId: obj.subscription || obj.id || shop.billing?.subscriptionId || "",
+    subscriptionId,
+    checkoutSessionId: obj.object === "checkout.session" ? obj.id : shop.billing?.checkoutSessionId || "",
+    customerEmail: obj.customer_details?.email || obj.customer_email || meta.email || shop.billing?.customerEmail || shop.ownerEmail || "",
+    currentPeriodEnd: obj.current_period_end ? new Date(obj.current_period_end * 1000).toISOString() : shop.billing?.currentPeriodEnd || "",
   };
   if (event.type === "checkout.session.completed") shop.billing.status = "active";
   if (event.type === "customer.subscription.created" || event.type === "customer.subscription.updated") shop.billing.status = obj.status || shop.billing.status || "active";
@@ -1093,7 +1176,19 @@ function updateShopBillingFromStripe(db, event) {
   if (event.type === "invoice.payment_succeeded") shop.billing.status = "active";
   if (event.type === "invoice.payment_failed") shop.billing.status = "past_due";
   shop.subscriptionStatus = shop.billing.status;
-  return { matched: true, shopId };
+  shop.lifecycleStatus = shop.billing.status === "active" ? "active" : shop.lifecycleStatus || shop.billing.status;
+  shop.active = shop.billing.status === "active" ? true : shop.active;
+  if (meta.owner_name && !shop.ownerName) shop.ownerName = sanitizeText(meta.owner_name, 120);
+  if (meta.email && !shop.ownerEmail) shop.ownerEmail = sanitizeEmail(meta.email);
+  if (meta.whatsapp && !shop.ownerWhatsapp) shop.ownerWhatsapp = normalizePhone(meta.whatsapp);
+  if (meta.city && !shop.city) shop.city = sanitizeText(meta.city, 80);
+  const prospect = (db.prospects || []).find((item) => item.barbershopId === shop.id || String(item.email || "").toLowerCase() === String(shop.ownerEmail || "").toLowerCase());
+  if (prospect) {
+    prospect.status = shop.billing.status === "active" ? "Piloto pago" : shop.billing.status || prospect.status;
+    prospect.next = shop.billing.status === "active" ? "Fazer onboarding da barbearia" : prospect.next;
+    prospect.updatedAt = now;
+  }
+  return { matched: true, shopId: shop.id };
 }
 
 async function handleStripeWebhook(req, res) {
@@ -1117,6 +1212,7 @@ async function handleApi(req, res, url) {
   const { pathname, searchParams } = url;
   if (pathname === "/api/webhooks/whatsapp") return handleWebhook(req, res, url);
   if (pathname === "/api/stripe/webhook") return handleStripeWebhook(req, res);
+  if (pathname === "/api/billing/signup-checkout" && req.method === "POST") return createSignupCheckout(req, res);
   if (pathname === "/api/billing/checkout" && req.method === "GET") {
     const db = await readDb();
     try { const session = await createStripeCheckoutSession({ db, source: "landing" }); await writeDb(db); return sendRedirect(res, session.url); }

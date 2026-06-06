@@ -109,21 +109,73 @@ function renderAdminInviteActivity() {
     : `<article><span>Nenhum convite de encaixe registrado ainda.</span></article>`;
 }
 
+function billingLabel(status) {
+  const map = { active: "Ativa", trialing: "Teste", pending_payment: "Pagamento pendente", past_due: "Pagamento atrasado", unpaid: "Inadimplente", canceled: "Cancelada", incomplete: "Incompleta" };
+  return map[status] || status || "Sem assinatura";
+}
+
+function billingClass(status) {
+  if (["active", "trialing"].includes(status)) return "good";
+  if (["past_due", "unpaid", "canceled"].includes(status)) return "danger";
+  return "warning";
+}
+
 function renderAdminBarbershops() {
   document.querySelector("#adminBarbershops").innerHTML =
     (adminState.barbershops || [])
       .map(
-        (shop) => `
+        (shop) => {
+          const billing = shop.billing || {};
+          const status = shop.subscriptionStatus || billing.status || (shop.active !== false ? "active" : "pending_payment");
+          return `
           <article>
             <div>
               <strong>${shop.name}</strong>
-              <span>${shop.city || "Cidade não informada"} · ${shop.plan || "Plano"} · ${adminMoney.format(Number(shop.monthlyPrice || 0))}/mês</span>
+              <span>${shop.city || "Cidade não informada"} · ${shop.ownerName || "Responsável não informado"} · ${adminMoney.format(Number(shop.monthlyPrice || 0))}/mês</span>
+              <span class="muted-small">${shop.ownerEmail || "sem email"}${shop.ownerWhatsapp ? ` · ${shop.ownerWhatsapp}` : ""}</span>
             </div>
-            <span class="status-pill ${shop.active !== false  ? "good" : "warning"}">${shop.active !== false  ? "Ativa" : "Pausada"}</span>
+            <span class="status-pill ${billingClass(status)}">${billingLabel(status)}</span>
           </article>
-        `,
+        `;
+        },
       )
       .join("") || `<article><span>Nenhuma barbearia cadastrada.</span></article>`;
+}
+
+function renderAdminBilling() {
+  const container = document.querySelector("#adminBillingList");
+  if (!container) return;
+  const shops = [...(adminState.barbershops || [])].sort((a, b) => String(b.billing?.lastEventAt || b.createdAt || "").localeCompare(String(a.billing?.lastEventAt || a.createdAt || "")));
+  const recentEvents = (adminState.stripeEvents || []).slice(0, 5);
+  container.innerHTML = `
+    <article>
+      <div>
+        <strong>Novo cliente</strong>
+        <span>Use o pré-cadastro para vincular o pagamento à barbearia antes do checkout.</span>
+      </div>
+      <a class="tiny-button" href="/cadastro.html">Pré-cadastro e checkout</a>
+    </article>
+    ${shops.map((shop) => {
+      const billing = shop.billing || {};
+      const status = shop.subscriptionStatus || billing.status || "pending_payment";
+      return `
+        <article>
+          <div>
+            <strong>${shop.name}</strong>
+            <span>${shop.ownerName || "Responsável"} · ${shop.ownerEmail || "sem email"} · ${adminMoney.format(Number(shop.monthlyPrice || 197))}/mês</span>
+            <span class="muted-small">${billing.subscriptionId ? `Sub: ${billing.subscriptionId}` : "Aguardando assinatura"}${billing.lastEvent ? ` · Último evento: ${billing.lastEvent}` : ""}</span>
+          </div>
+          <span class="status-pill ${billingClass(status)}">${billingLabel(status)}</span>
+        </article>`;
+    }).join("")}
+    <article>
+      <div>
+        <strong>Webhook Stripe</strong>
+        <span>${recentEvents.length ? `${recentEvents.length} eventos recentes recebidos. Último: ${recentEvents[0].type}.` : "Endpoint configurado: /api/stripe/webhook. Aguardando eventos."}</span>
+      </div>
+      <span class="status-pill good">Pronto</span>
+    </article>
+  `;
 }
 
 function renderReadiness() {
@@ -260,6 +312,7 @@ function renderAdminProposal() {
 function renderAdminAll() {
   renderAdminMetrics();
   renderAdminBarbershops();
+  renderAdminBilling();
   renderReadiness();
   renderAdminInviteActivity();
   renderAdminPipeline();
