@@ -1,5 +1,0 @@
--- Próxima etapa após validação: tabelas normalizadas para relatórios e escala.
--- Não execute junto com 001 nesta versão; este arquivo documenta a migração planejada.
--- Entidades planejadas: barbershops, memberships, clients, professionals, services,
--- appointments, campaigns, campaign_recipients, whatsapp_messages, audit_logs e subscriptions.
--- Cada tabela operacional deverá conter barbershop_id e políticas RLS por membership.
