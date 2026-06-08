@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node server.mjs",
-    "check": "node --check server.mjs && node --check app.js && node --check public-booking.js && node --check admin.js",
+    "check": "node --check server.mjs && node --check app.js && node --check public-booking.js && node --check admin.js && node --check cadastro.js && node --check sucesso.js",
     "test": "node tests/smoke.mjs",
     "backup": "node scripts/backup.mjs"
   }

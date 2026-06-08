@@ -124,7 +124,7 @@ try {
   const protectedDb = await fetch(`${baseUrl}/data/db.json`); if (protectedDb.status !== 404) throw new Error("db_file_exposed");
   const protectedServer = await fetch(`${baseUrl}/server.mjs`); if (protectedServer.status !== 404) throw new Error("server_file_exposed");
   const protectedTests = await fetch(`${baseUrl}/tests/smoke.mjs`); if (protectedTests.status !== 404) throw new Error("internal_test_exposed");
-  for (const page of ["/", "/app.html", "/public.html?barbearia=barbearia-alpha", "/admin.html", "/privacidade.html", "/termos.html"]) { const res = await fetch(`${baseUrl}${page}`); if (!res.ok) throw new Error(`page_unavailable:${page}`); }
+  for (const page of ["/", "/app.html", "/public.html?barbearia=barbearia-alpha", "/admin.html", "/cadastro.html", "/sucesso.html", "/onboarding.html", "/privacidade.html", "/termos.html"]) { const res = await fetch(`${baseUrl}${page}`); if (!res.ok) throw new Error(`page_unavailable:${page}`); }
   await fetchJson(`/api/campaigns/${campaign.id}`, { method: "DELETE", headers: auth });
   await fetchJson(`/api/appointments/${otherAppointment.id}`, { method: "DELETE", headers: auth });
   await fetchJson(`/api/appointments/${barberAppointment.id}`, { method: "DELETE", headers: auth });
