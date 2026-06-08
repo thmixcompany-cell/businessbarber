@@ -4582,3 +4582,153 @@ body:has(.admin-shell) .admin-topbar h1 {
     font-size: 16px;
   }
 }
+
+/* ===== Final commercial pages checkup ===== */
+.checkout-main,
+.onboarding-page,
+.success-card {
+  box-sizing: border-box;
+}
+
+.checkout-form,
+.checkout-form *,
+.success-card,
+.success-card *,
+.onboarding-board,
+.onboarding-board * {
+  box-sizing: border-box;
+}
+
+.checkout-form input,
+.checkout-form textarea,
+.checkout-form select {
+  width: 100%;
+  min-width: 0;
+}
+
+.success-card h1 {
+  max-width: 760px;
+  overflow-wrap: anywhere;
+}
+
+.success-actions .secondary-button {
+  color: #f5ead9;
+  background: rgba(255,255,255,.045);
+}
+
+.onboarding-action-board article {
+  min-width: 0;
+}
+
+.onboarding-action-board article label {
+  align-items: flex-start;
+}
+
+.onboarding-action-board input[type="checkbox"] {
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+}
+
+body:has(.admin-shell) .admin-return,
+body:has(.admin-shell) .marketing-nav nav a {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.admin-return {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+}
+
+body:has(.admin-shell) .commercial-admin-card {
+  min-width: 0;
+}
+
+body:has(.admin-shell) .card-side-actions {
+  align-self: stretch;
+  justify-content: center;
+}
+
+body:has(.admin-shell) .shop-meta-grid span,
+body:has(.admin-shell) .admin-card-note,
+body:has(.admin-shell) .compact-list article span {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .checkout-main,
+  .onboarding-page,
+  .success-card,
+  .success-card-upgraded {
+    width: min(100% - 28px, 560px);
+  }
+
+  .checkout-main {
+    margin: 30px auto 54px;
+    gap: 24px;
+  }
+
+  .checkout-copy h1,
+  .success-card h1,
+  .onboarding-page h1 {
+    font-size: clamp(31px, 10.5vw, 42px);
+    line-height: 1.05;
+    letter-spacing: -.035em;
+  }
+
+  .checkout-form,
+  .success-card {
+    padding: 20px;
+    border-radius: 20px;
+  }
+
+  .form-split,
+  .manual-onboarding-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .checkout-steps article,
+  .success-next article {
+    align-items: flex-start;
+  }
+
+  .success-actions,
+  .onboarding-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .success-actions a,
+  .onboarding-actions a {
+    width: 100%;
+  }
+
+  .onboarding-board {
+    grid-template-columns: 1fr;
+  }
+
+  body:has(.admin-shell) .barbershop-admin-card,
+  body:has(.admin-shell) .billing-admin-card,
+  body:has(.admin-shell) .billing-summary-row,
+  body:has(.admin-shell) .stripe-events-card,
+  body:has(.admin-shell) .polished-shop-card,
+  body:has(.admin-shell) .polished-summary-card {
+    grid-template-columns: 1fr !important;
+  }
+
+  body:has(.admin-shell) .card-side-actions,
+  body:has(.admin-shell) .polished-actions {
+    width: 100%;
+    align-items: stretch;
+  }
+
+  body:has(.admin-shell) .card-side-actions .tiny-button,
+  body:has(.admin-shell) .polished-actions .tiny-button {
+    min-height: 42px;
+  }
+}
