@@ -615,6 +615,24 @@ async function sendWhatsAppTemplate({ db, shopId, to, templateName, language, va
   return { simulated: false, status: "sent", messageId: result.messages?.[0]?.id || null };
 }
 
+function isTemplateParameterMismatch(error) {
+  const message = String(error?.details?.error?.message || error?.message || "");
+  return message.includes("#132000") || /number of parameters/i.test(message);
+}
+
+async function sendWhatsAppTemplateWithFallbacks({ db, shopId, to, templateName, language, variableSets = [] }) {
+  let lastError = null;
+  for (const variables of variableSets) {
+    try {
+      return await sendWhatsAppTemplate({ db, shopId, to, templateName, language, variables });
+    } catch (error) {
+      lastError = error;
+      if (!isTemplateParameterMismatch(error)) throw error;
+    }
+  }
+  throw lastError || new Error("whatsapp_send_failed");
+}
+
 async function sendWhatsAppText({ db, shopId, to, text }) {
   const config = whatsappInternalConfig(db, shopId);
   if (config.mode !== "production" || !config.accessToken || !config.phoneNumberId) return { simulated: true, status: "sandbox", messageId: null };
@@ -694,19 +712,26 @@ function buildSlotInviteText(db, shopId, appointment, client) {
 async function sendWhatsAppSlotInvite({ db, shopId, to, appointment, client }) {
   const config = whatsappInternalConfig(db, shopId);
   const shop = db.barbershops.find((item) => item.id === shopId) || {};
-  return sendWhatsAppTemplate({
+  const clientName = client.name || "cliente";
+  const shopName = shop.name || "barbearia";
+  const date = formatCustomerDate(appointmentDate(appointment));
+  const time = appointment.time || "";
+  const barber = appointment.barber || "profissional";
+  const service = appointment.service || "serviço";
+  const dateTime = `${date} às ${time}`.trim();
+  return sendWhatsAppTemplateWithFallbacks({
     db,
     shopId,
     to,
     templateName: config.slotInviteTemplate || whatsappSlotInviteTemplate,
     language: config.templateLanguage || whatsappTemplateLanguage,
-    variables: [
-      client.name || "cliente",
-      shop.name || "barbearia",
-      formatCustomerDate(appointmentDate(appointment)),
-      appointment.time || "",
-      appointment.barber || "profissional",
-      appointment.service || "serviço",
+    variableSets: [
+      [clientName, shopName, date, time, barber, service],
+      [clientName, shopName, dateTime, barber, service],
+      [clientName, shopName, dateTime, barber],
+      [clientName, shopName, dateTime],
+      [clientName, dateTime],
+      [clientName],
     ],
   });
 }
