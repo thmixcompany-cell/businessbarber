@@ -758,9 +758,11 @@ async function sendWhatsAppAppointmentReminder({ db, shopId, to, appointment, cl
 
 function recentInviteForClient(db, shopId, phone, hours = 24) {
   const cutoff = Date.now() - hours * 60 * 60 * 1000;
+  const ignoredStatuses = new Set(["Falha no envio", "Recusado", "Horário indisponível"]);
   return scope(db.messageHistory, shopId).some((message) => (
     message.type === "slot_invite"
     && normalizePhone(message.phone) === normalizePhone(phone)
+    && !ignoredStatuses.has(message.status || "")
     && new Date(message.createdAt || message.at || 0).getTime() >= cutoff
   ));
 }
