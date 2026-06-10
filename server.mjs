@@ -39,6 +39,8 @@ const stripePriceId = process.env.STRIPE_PRICE_ID || "";
 const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
 const stripeSuccessUrl = process.env.STRIPE_SUCCESS_URL || `${appUrl.replace(/\/$/, "")}/sucesso.html?session_id={CHECKOUT_SESSION_ID}`;
 const stripeCancelUrl = process.env.STRIPE_CANCEL_URL || `${appUrl.replace(/\/$/, "")}/cadastro.html?billing=cancel`;
+const billingEntityName = process.env.BILLING_ENTITY_NAME || "ThM IX Company";
+const allowTestStripeInProduction = String(process.env.ALLOW_TEST_STRIPE_IN_PRODUCTION || "false").toLowerCase() === "true";
 
 const tenantCollections = [
   "clients", "professionals", "services", "campaigns", "inactiveClients", "appointments", "waitlist", "clubPlans", "messageHistory", "pixCharges",
@@ -1041,7 +1043,19 @@ async function handleWebhook(req, res, url) {
 }
 
 function stripeConfigured() {
-  return Boolean(stripeSecretKey && stripePriceId);
+  if (!stripeSecretKey || !stripePriceId) return false;
+  if (process.env.NODE_ENV === "production" && stripeSecretKey.startsWith("sk_test_") && !allowTestStripeInProduction) return false;
+  return true;
+}
+
+function stripeModeLabel() {
+  if (stripeSecretKey.startsWith("sk_live_")) return "live";
+  if (stripeSecretKey.startsWith("sk_test_")) return "test";
+  return stripeSecretKey ? "unknown" : "missing";
+}
+
+function stripeProductionReady() {
+  return stripeConfigured() && (process.env.NODE_ENV !== "production" || stripeModeLabel() === "live");
 }
 
 async function stripeRequest(pathname, params) {
@@ -1089,6 +1103,8 @@ async function createStripeCheckoutSession({ db, user = null, shopId = "", sourc
     allow_promotion_codes: "true",
     client_reference_id: shopId || "public",
     "metadata[source]": source,
+    "metadata[billing_entity]": billingEntityName,
+    "metadata[product_brand]": "Business Barber",
     "metadata[barbershop_id]": shopId || "",
     "metadata[barbershop_name]": shop?.name || signup?.barbershopName || "",
     "metadata[owner_name]": signup?.ownerName || shop?.ownerName || "",
@@ -1100,6 +1116,8 @@ async function createStripeCheckoutSession({ db, user = null, shopId = "", sourc
     "metadata[notes]": signup?.notes || shop?.onboardingNotes || "",
     "subscription_data[metadata][barbershop_id]": shopId || "",
     "subscription_data[metadata][source]": source,
+    "subscription_data[metadata][billing_entity]": billingEntityName,
+    "subscription_data[metadata][product_brand]": "Business Barber",
     "subscription_data[metadata][barbershop_name]": shop?.name || signup?.barbershopName || "",
     "subscription_data[metadata][owner_name]": signup?.ownerName || shop?.ownerName || "",
     "subscription_data[metadata][email]": contactEmail,
@@ -1263,10 +1281,10 @@ async function handleApi(req, res, url) {
   if (pathname === "/api/health") {
     try {
       if (storageProvider === "supabase") await readSupabaseState();
-      return sendJson(res, 200, { ok: true, storage: storageProvider, databaseConnected: true, whatsappConfigured: Boolean(whatsappAccessToken && whatsappPhoneNumberId), stripeConfigured: stripeConfigured() });
+      return sendJson(res, 200, { ok: true, storage: storageProvider, databaseConnected: true, whatsappConfigured: Boolean(whatsappAccessToken && whatsappPhoneNumberId), stripeConfigured: stripeConfigured(), stripeMode: stripeModeLabel(), stripeProductionReady: stripeProductionReady(), billingEntity: billingEntityName });
     } catch (error) {
       console.error("Health check database error:", error.message);
-      return sendJson(res, 503, { ok: false, storage: storageProvider, databaseConnected: false, whatsappConfigured: Boolean(whatsappAccessToken && whatsappPhoneNumberId), stripeConfigured: stripeConfigured() });
+      return sendJson(res, 503, { ok: false, storage: storageProvider, databaseConnected: false, whatsappConfigured: Boolean(whatsappAccessToken && whatsappPhoneNumberId), stripeConfigured: stripeConfigured(), stripeMode: stripeModeLabel(), stripeProductionReady: stripeProductionReady(), billingEntity: billingEntityName });
     }
   }
   if (pathname.startsWith("/api/public/") && isRateLimited(req, "public", 25)) return sendJson(res, 429, { error: "rate_limited" });

@@ -3928,6 +3928,16 @@ body:has(.app-shell) .status-pill.danger {
 
 .checkout-form h2 { color: #fff8ee; font-size: 28px; }
 .checkout-form .field { color: #fff8ee; }
+.billing-entity-note {
+  margin: -4px 0 4px;
+  padding: 12px 14px;
+  border: 1px solid rgba(231,187,116,.18);
+  border-radius: 14px;
+  color: rgba(244,239,230,.76);
+  background: rgba(231,187,116,.075);
+  font-size: 13px;
+  line-height: 1.55;
+}
 .checkout-form input {
   color: #fff8ee;
   background: rgba(255,255,255,.055);
