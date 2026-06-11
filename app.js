@@ -2002,7 +2002,7 @@ function showView(viewId) {
   document.querySelectorAll(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.view === viewId));
   document.querySelectorAll(".view").forEach((view) => view.classList.remove("active"));
   target.classList.add("active");
-  window.scrollTo(0, 0);
+  document.querySelector(".main")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function applyRoleExperience() {

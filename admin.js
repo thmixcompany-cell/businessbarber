@@ -291,12 +291,13 @@ function renderAdminBilling() {
 }
 
 function renderReadiness() {
+  const publicBooking = adminState.publicBooking || {};
   const checks = [
     ["Clientes", (adminState.clients || []).length > 0],
     ["Serviços", (adminState.services || []).length > 0],
     ["Profissionais", (adminState.professionals || []).length > 0],
     ["Campanhas", (adminState.campaigns || []).length > 0],
-    ["Página pública", Boolean(adminState.publicBooking.enabled)],
+    ["Página pública", Boolean(publicBooking.enabled)],
     ["Stripe", (adminState.barbershops || []).some((shop) => shop.billing?.customerId || shop.billing?.lastEvent)],
     ["Onboarding", (adminState.barbershops || []).some((shop) => shop.lifecycleStatus === "active" || shop.subscriptionStatus === "active")],
     ["Auditoria", (adminState.auditLogs || []).length > 0],
@@ -440,7 +441,7 @@ document.querySelectorAll("[data-admin-view]").forEach((button) => {
     document.querySelectorAll(".admin-view").forEach((view) => view.classList.remove("active"));
     button.classList.add("active");
     document.querySelector(`#admin-${button.dataset.adminView}`).classList.add("active");
-    window.scrollTo(0, 0);
+    document.querySelector(".admin-main")?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 });
 

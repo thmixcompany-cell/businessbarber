@@ -2209,11 +2209,26 @@ textarea {
 }
 
 .pipeline-card header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
   margin-bottom: 12px;
+}
+
+.pipeline-card header > div {
+  min-width: 0;
+}
+
+.pipeline-card .status-pill {
+  max-width: 100%;
+  height: auto;
+  min-height: 30px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.25;
 }
 
 .pipeline-card p {
@@ -3569,6 +3584,49 @@ body:has(.admin-shell) .admin-view:not(.active) {
 body:has(.app-shell) .view.active,
 body:has(.admin-shell) .admin-view.active {
   visibility: visible;
+  animation: view-enter .22s ease-out both;
+}
+
+@keyframes view-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.nav-item,
+.primary-button,
+.secondary-button,
+.tiny-button,
+.icon-button {
+  transition: transform .18s ease, border-color .18s ease, background-color .18s ease, color .18s ease, box-shadow .18s ease;
+}
+
+.nav-item:active,
+.primary-button:active,
+.secondary-button:active,
+.tiny-button:active,
+.icon-button:active {
+  transform: translateY(1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body:has(.app-shell) .view.active,
+  body:has(.admin-shell) .admin-view.active {
+    animation: none;
+  }
+
+  .nav-item,
+  .primary-button,
+  .secondary-button,
+  .tiny-button,
+  .icon-button {
+    transition: none;
+  }
 }
 
 @media (max-width: 1180px) {
@@ -4740,5 +4798,65 @@ body:has(.admin-shell) .compact-list article span {
   body:has(.admin-shell) .card-side-actions .tiny-button,
   body:has(.admin-shell) .polished-actions .tiny-button {
     min-height: 42px;
+  }
+}
+
+/* ===== Final UI launch pass ===== */
+input[type="checkbox"] {
+  width: 22px !important;
+  height: 22px !important;
+  min-width: 22px;
+  flex: 0 0 22px;
+  accent-color: #e7bb74;
+  cursor: pointer;
+}
+
+input[type="checkbox"]:disabled {
+  cursor: default;
+}
+
+.primary-button,
+.secondary-button,
+.tiny-button {
+  white-space: normal;
+  text-align: center;
+  line-height: 1.25;
+}
+
+@media (max-width: 720px) {
+  .pipeline-card header {
+    grid-template-columns: 1fr;
+  }
+
+  .pipeline-card .status-pill {
+    justify-self: flex-start;
+  }
+}
+
+body:has(.admin-shell) .pipeline-board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+body:has(.admin-shell) .pipeline-card {
+  display: flex !important;
+  flex-direction: column;
+  align-items: stretch !important;
+  min-width: 0;
+}
+
+body:has(.admin-shell) .pipeline-card header {
+  width: 100%;
+}
+
+body:has(.admin-shell) .pipeline-card header strong,
+body:has(.admin-shell) .pipeline-card header span:not(.status-pill) {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 980px) {
+  body:has(.admin-shell) .pipeline-board {
+    grid-template-columns: 1fr;
   }
 }
