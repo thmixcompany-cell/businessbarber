@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { Resend } from "resend";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = path.join(__dirname, "data");
@@ -41,6 +42,12 @@ const stripeSuccessUrl = process.env.STRIPE_SUCCESS_URL || `${appUrl.replace(/\/
 const stripeCancelUrl = process.env.STRIPE_CANCEL_URL || `${appUrl.replace(/\/$/, "")}/cadastro.html?billing=cancel`;
 const billingEntityName = process.env.BILLING_ENTITY_NAME || "ThM IX Company";
 const allowTestStripeInProduction = String(process.env.ALLOW_TEST_STRIPE_IN_PRODUCTION || "false").toLowerCase() === "true";
+const emailProvider = String(process.env.EMAIL_PROVIDER || "resend").toLowerCase();
+const resendApiKey = process.env.RESEND_API_KEY || "";
+const emailFrom = process.env.EMAIL_FROM || "Business Barber <onboarding@businessbarber.com.br>";
+const emailReplyTo = process.env.EMAIL_REPLY_TO || "thmixcompany@gmail.com";
+const onboardingWhatsapp = normalizePhone(process.env.ONBOARDING_WHATSAPP || "5566999999999");
+const resendClient = emailProvider === "resend" && resendApiKey ? new Resend(resendApiKey) : null;
 
 const tenantCollections = [
   "clients", "professionals", "services", "campaigns", "inactiveClients", "appointments", "waitlist", "clubPlans", "messageHistory", "pixCharges",
@@ -400,6 +407,12 @@ function validPhone(value) { const phone = normalizePhone(value); return phone.l
 function sanitizeText(value, max = 120) { return String(value || "").trim().replace(/[<>]/g, "").slice(0, max); }
 function sanitizeEmail(value) { return String(value || "").trim().toLowerCase().slice(0, 180); }
 function validEmail(value) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim()); }
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
+}
+function formatMoneyBRL(value) {
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value || 0));
+}
 function slugify(value) { return String(value || "barbearia").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 70) || "barbearia"; }
 function uniqueSlug(db, base, excludeId = "") {
   const root = slugify(base);
@@ -1058,6 +1071,167 @@ function stripeProductionReady() {
   return stripeConfigured() && (process.env.NODE_ENV !== "production" || stripeModeLabel() === "live");
 }
 
+function emailConfigured() {
+  return Boolean(resendApiKey && emailFrom);
+}
+
+function onboardingEmailPlan(barbershop = {}) {
+  return barbershop.plan ? `Business Barber - Plano ${barbershop.plan}` : "Business Barber - Plano Piloto";
+}
+
+function buildOnboardingWhatsAppLink(barbershop = {}) {
+  const phone = onboardingWhatsapp || "5566999999999";
+  const message = [
+    `Olá, aqui é ${barbershop.ownerName || "o responsável"} da ${barbershop.name || "barbearia"}.`,
+    "Pagamento confirmado no Business Barber.",
+    "Quero concluir o onboarding e ativar minha barbearia.",
+  ].join(" ");
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+}
+
+function buildOnboardingEmailHtml(barbershop = {}) {
+  const ownerName = escapeHtml(barbershop.ownerName || "tudo bem");
+  const shopName = escapeHtml(barbershop.name || "sua barbearia");
+  const city = escapeHtml(barbershop.city || "Não informada");
+  const whatsapp = escapeHtml(barbershop.ownerWhatsapp || "Não informado");
+  const email = escapeHtml(barbershop.ownerEmail || "Não informado");
+  const plan = escapeHtml(onboardingEmailPlan(barbershop));
+  const value = escapeHtml(`${formatMoneyBRL(barbershop.monthlyPrice || 197)}/mês`);
+  const whatsappLink = escapeHtml(buildOnboardingWhatsAppLink(barbershop));
+  const steps = [
+    "Confirmar os dados da barbearia.",
+    "Cadastrar serviços, preços e horários.",
+    "Configurar o WhatsApp oficial da barbearia.",
+    "Importar ou cadastrar a base de clientes.",
+    "Preparar a primeira campanha de recuperação.",
+  ];
+
+  return `<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pagamento confirmado</title>
+  </head>
+  <body style="margin:0;background:#090806;color:#f8f2e7;font-family:Arial,Helvetica,sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#090806;padding:28px 12px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background:#14110d;border:1px solid rgba(218,171,91,.34);border-radius:18px;overflow:hidden;">
+            <tr>
+              <td style="padding:34px 30px;background:linear-gradient(135deg,#17120c 0%,#24190e 100%);">
+                <div style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#d9a95d;font-weight:700;">Business Barber</div>
+                <h1 style="margin:14px 0 10px;font-size:34px;line-height:1.08;color:#fff7e8;">Pagamento confirmado. Vamos ativar sua barbearia.</h1>
+                <p style="margin:0;color:#d8cdbc;font-size:16px;line-height:1.65;">Olá, ${ownerName}. Recebemos a assinatura da <strong style="color:#ffffff;">${shopName}</strong> no Business Barber.</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:28px 30px;">
+                <p style="margin:0 0 22px;color:#e7dccb;font-size:16px;line-height:1.65;">Agora vamos iniciar a implantação assistida para deixar sua operação pronta para recuperar clientes, preencher horários vagos e acompanhar a receita recuperada pelo painel.</p>
+                <a href="${whatsappLink}" style="display:inline-block;background:#d9a95d;color:#110d08;text-decoration:none;font-weight:800;border-radius:12px;padding:15px 22px;margin:0 0 28px;">Concluir onboarding no WhatsApp</a>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 26px;background:#1b1712;border:1px solid rgba(255,255,255,.08);border-radius:14px;">
+                  <tr><td style="padding:20px 22px;">
+                    <h2 style="margin:0 0 14px;font-size:18px;color:#fff;">Dados recebidos</h2>
+                    <p style="margin:0 0 8px;color:#d8cdbc;"><strong style="color:#fff;">Barbearia:</strong> ${shopName}</p>
+                    <p style="margin:0 0 8px;color:#d8cdbc;"><strong style="color:#fff;">Cidade:</strong> ${city}</p>
+                    <p style="margin:0 0 8px;color:#d8cdbc;"><strong style="color:#fff;">Responsável:</strong> ${ownerName}</p>
+                    <p style="margin:0 0 8px;color:#d8cdbc;"><strong style="color:#fff;">E-mail:</strong> ${email}</p>
+                    <p style="margin:0 0 8px;color:#d8cdbc;"><strong style="color:#fff;">WhatsApp:</strong> ${whatsapp}</p>
+                    <p style="margin:0 0 8px;color:#d8cdbc;"><strong style="color:#fff;">Plano:</strong> ${plan}</p>
+                    <p style="margin:0;color:#d8cdbc;"><strong style="color:#fff;">Valor:</strong> ${value}</p>
+                  </td></tr>
+                </table>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#10100d;border:1px solid rgba(217,169,93,.24);border-radius:14px;">
+                  <tr><td style="padding:20px 22px;">
+                    <h2 style="margin:0 0 14px;font-size:18px;color:#fff;">Próximos passos</h2>
+                    ${steps.map((step, index) => `<p style="margin:0 0 10px;color:#e7dccb;line-height:1.5;"><span style="display:inline-block;width:24px;height:24px;line-height:24px;text-align:center;border-radius:999px;background:rgba(217,169,93,.18);color:#d9a95d;font-weight:800;margin-right:8px;">${index + 1}</span>${escapeHtml(step)}</p>`).join("")}
+                  </td></tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 30px;border-top:1px solid rgba(255,255,255,.08);color:#b8aa98;font-size:13px;">Business Barber é um produto da ThM IX Company.</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+}
+
+function buildOnboardingEmailText(barbershop = {}) {
+  return [
+    `Olá, ${barbershop.ownerName || "tudo bem"}.`,
+    "",
+    `Recebemos a assinatura da ${barbershop.name || "sua barbearia"} no Business Barber.`,
+    "",
+    "Agora vamos iniciar a implantação assistida para deixar sua operação pronta para recuperar clientes, preencher horários vagos e acompanhar a receita recuperada pelo painel.",
+    "",
+    "Próximos passos:",
+    "1. Confirmar os dados da barbearia.",
+    "2. Cadastrar serviços, preços e horários.",
+    "3. Configurar o WhatsApp oficial da barbearia.",
+    "4. Importar ou cadastrar a base de clientes.",
+    "5. Preparar a primeira campanha de recuperação.",
+    "",
+    "Dados recebidos:",
+    `Barbearia: ${barbershop.name || "Não informada"}`,
+    `Cidade: ${barbershop.city || "Não informada"}`,
+    `Responsável: ${barbershop.ownerName || "Não informado"}`,
+    `E-mail: ${barbershop.ownerEmail || "Não informado"}`,
+    `WhatsApp: ${barbershop.ownerWhatsapp || "Não informado"}`,
+    `Plano: ${onboardingEmailPlan(barbershop)}`,
+    `Valor: ${formatMoneyBRL(barbershop.monthlyPrice || 197)}/mês`,
+    "",
+    `Concluir onboarding no WhatsApp: ${buildOnboardingWhatsAppLink(barbershop)}`,
+    "",
+    "Business Barber é um produto da ThM IX Company.",
+  ].join("\n");
+}
+
+async function sendOnboardingEmail(barbershop = {}) {
+  if (barbershop.onboarding_email_status === "sent" && barbershop.onboarding_email_sent_at) {
+    return { ok: true, skipped: true, status: "sent", reason: "already_sent" };
+  }
+  const now = new Date().toISOString();
+  const recipient = sanitizeEmail(barbershop.ownerEmail || barbershop.billing?.customerEmail || "");
+  barbershop.onboarding_email_last_attempt_at = now;
+  barbershop.onboarding_email_status = "pending";
+
+  if (!validEmail(recipient)) {
+    barbershop.onboarding_email_status = "failed";
+    barbershop.onboarding_email_error = "missing_recipient_email";
+    return { ok: false, status: "failed", error: "missing_recipient_email" };
+  }
+  if (!emailConfigured() || !resendClient) {
+    barbershop.onboarding_email_error = "email_not_configured";
+    return { ok: false, skipped: true, status: "pending", error: "email_not_configured" };
+  }
+
+  try {
+    const response = await resendClient.emails.send({
+      from: emailFrom,
+      to: [recipient],
+      replyTo: emailReplyTo,
+      subject: "Pagamento confirmado — vamos ativar sua barbearia",
+      html: buildOnboardingEmailHtml(barbershop),
+      text: buildOnboardingEmailText(barbershop),
+    });
+    if (response?.error) throw new Error(response.error.message || "resend_send_failed");
+    barbershop.onboarding_email_status = "sent";
+    barbershop.onboarding_email_sent_at = new Date().toISOString();
+    barbershop.onboarding_email_error = "";
+    barbershop.onboarding_email_provider = "resend";
+    barbershop.onboarding_email_message_id = response?.data?.id || response?.id || "";
+    return { ok: true, status: "sent", id: barbershop.onboarding_email_message_id };
+  } catch (error) {
+    barbershop.onboarding_email_status = "failed";
+    barbershop.onboarding_email_error = String(error?.message || error || "resend_send_failed").slice(0, 500);
+    return { ok: false, status: "failed", error: barbershop.onboarding_email_error };
+  }
+}
+
 async function stripeRequest(pathname, params) {
   if (!stripeSecretKey) {
     const error = new Error("stripe_not_configured");
@@ -1213,7 +1387,7 @@ function updateShopBillingFromStripe(db, event) {
   const shopId = meta.barbershop_id || obj.client_reference_id || meta.barbershopId || "";
   let shop = shopId ? db.barbershops.find((item) => item.id === shopId) : null;
   if (!shop && obj.customer) shop = db.barbershops.find((item) => item.billing?.customerId === obj.customer);
-  if (!shop) return { matched: false, shopId };
+  if (!shop) return { matched: false, shopId, shop: null };
   const now = new Date().toISOString();
   const subscriptionId = obj.subscription || obj.id || shop.billing?.subscriptionId || "";
   shop.billing = {
@@ -1248,7 +1422,7 @@ function updateShopBillingFromStripe(db, event) {
     prospect.next = shop.billing.status === "active" ? "Fazer onboarding da barbearia" : prospect.next;
     prospect.updatedAt = now;
   }
-  return { matched: true, shopId: shop.id };
+  return { matched: true, shopId: shop.id, shop };
 }
 
 async function handleStripeWebhook(req, res) {
@@ -1261,6 +1435,16 @@ async function handleStripeWebhook(req, res) {
   try { event = JSON.parse(rawBody); } catch { return sendJson(res, 400, { error: "invalid_stripe_payload" }); }
   const db = await readDb();
   const update = updateShopBillingFromStripe(db, event);
+  if (event.type === "checkout.session.completed" && update.shop) {
+    const emailResult = await sendOnboardingEmail(update.shop);
+    addAudit(
+      db,
+      emailResult.ok ? "onboarding.email_sent" : `onboarding.email_${emailResult.status || "failed"}`,
+      "system",
+      { provider: "resend", skipped: Boolean(emailResult.skipped), error: emailResult.error || "", messageId: emailResult.id || "" },
+      update.shopId,
+    );
+  }
   db.stripeEvents.unshift({ id: event.id || makeId("stripeevt"), type: event.type, at: new Date().toISOString(), matched: update.matched, shopId: update.shopId || null });
   db.stripeEvents = db.stripeEvents.slice(0, 200);
   addAudit(db, "stripe.webhook_received", "stripe", { type: event.type, matched: update.matched, shopId: update.shopId || "" }, update.shopId || null);
@@ -1281,10 +1465,10 @@ async function handleApi(req, res, url) {
   if (pathname === "/api/health") {
     try {
       if (storageProvider === "supabase") await readSupabaseState();
-      return sendJson(res, 200, { ok: true, storage: storageProvider, databaseConnected: true, whatsappConfigured: Boolean(whatsappAccessToken && whatsappPhoneNumberId), stripeConfigured: stripeConfigured(), stripeMode: stripeModeLabel(), stripeProductionReady: stripeProductionReady(), billingEntity: billingEntityName });
+      return sendJson(res, 200, { ok: true, storage: storageProvider, databaseConnected: true, whatsappConfigured: Boolean(whatsappAccessToken && whatsappPhoneNumberId), stripeConfigured: stripeConfigured(), stripeMode: stripeModeLabel(), stripeProductionReady: stripeProductionReady(), emailConfigured: emailConfigured(), billingEntity: billingEntityName });
     } catch (error) {
       console.error("Health check database error:", error.message);
-      return sendJson(res, 503, { ok: false, storage: storageProvider, databaseConnected: false, whatsappConfigured: Boolean(whatsappAccessToken && whatsappPhoneNumberId), stripeConfigured: stripeConfigured(), stripeMode: stripeModeLabel(), stripeProductionReady: stripeProductionReady(), billingEntity: billingEntityName });
+      return sendJson(res, 503, { ok: false, storage: storageProvider, databaseConnected: false, whatsappConfigured: Boolean(whatsappAccessToken && whatsappPhoneNumberId), stripeConfigured: stripeConfigured(), stripeMode: stripeModeLabel(), stripeProductionReady: stripeProductionReady(), emailConfigured: emailConfigured(), billingEntity: billingEntityName });
     }
   }
   if (pathname.startsWith("/api/public/") && isRateLimited(req, "public", 25)) return sendJson(res, 429, { error: "rate_limited" });

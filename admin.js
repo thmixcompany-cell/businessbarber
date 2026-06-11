@@ -140,6 +140,33 @@ function onboardingClass(shop) {
 
 function shortStripe(id) { return id ? `${String(id).slice(0, 10)}...` : "não vinculado"; }
 
+function onboardingEmailStatus(shop = {}) {
+  if (shop.onboarding_email_status) return shop.onboarding_email_status;
+  if (shop.onboarding_email_sent_at) return "sent";
+  return "pending";
+}
+
+function onboardingEmailLabel(shop = {}) {
+  const status = onboardingEmailStatus(shop);
+  if (status === "sent") return "E-mail onboarding: Enviado";
+  if (status === "failed") return "E-mail onboarding: Falhou";
+  return "E-mail onboarding: Pendente";
+}
+
+function onboardingEmailClass(shop = {}) {
+  const status = onboardingEmailStatus(shop);
+  if (status === "sent") return "good";
+  if (status === "failed") return "danger";
+  return "warning";
+}
+
+function onboardingEmailDetail(shop = {}) {
+  if (shop.onboarding_email_sent_at) return `Enviado em ${new Date(shop.onboarding_email_sent_at).toLocaleString("pt-BR")}`;
+  if (shop.onboarding_email_error) return `Erro: ${shop.onboarding_email_error}`;
+  if (shop.onboarding_email_last_attempt_at) return `Tentativa em ${new Date(shop.onboarding_email_last_attempt_at).toLocaleString("pt-BR")}`;
+  return "Aguardando pagamento aprovado";
+}
+
 function stripeEventLabel(type) {
   const map = {
     "checkout.session.completed": "Checkout concluído",
@@ -214,11 +241,13 @@ function renderAdminBarbershops() {
               <span class="commercial-badge ${billing.lastEvent ? "good" : "warning"}">${lastEvent}</span>
               <span class="commercial-badge muted">${renewalLabel(billing)}</span>
               <span class="commercial-badge ${onboardingClass(shop)}">${next}</span>
+              <span class="commercial-badge ${onboardingEmailClass(shop)}">${onboardingEmailLabel(shop)}</span>
             </div>
             <details class="technical-details">
               <summary>Detalhes técnicos</summary>
               <span>Cliente Stripe: ${shortStripe(billing.customerId)}</span>
               <span>Assinatura: ${shortStripe(billing.subscriptionId)}</span>
+              <span>E-mail onboarding: ${onboardingEmailDetail(shop)}</span>
               <span>Última atualização: ${billing.lastEventAt ? new Date(billing.lastEventAt).toLocaleString("pt-BR") : "não informada"}</span>
             </details>
           </div>
@@ -265,12 +294,14 @@ function renderAdminBilling() {
               <span class="commercial-badge ${billing.lastEvent ? "good" : "warning"}">${stripeEventLabel(billing.lastEvent)}</span>
               <span class="commercial-badge muted">${renewalLabel(billing)}</span>
               <span class="commercial-badge ${onboardingClass(shop)}">${nextStepLabel(shop)}</span>
+              <span class="commercial-badge ${onboardingEmailClass(shop)}">${onboardingEmailLabel(shop)}</span>
             </div>
             <p class="admin-card-note">${billing.lastEventAt ? `Atualizado em ${new Date(billing.lastEventAt).toLocaleString("pt-BR")}` : "Aguardando o primeiro retorno do Stripe."}</p>
             <details class="technical-details">
               <summary>Detalhes técnicos</summary>
               <span>Cliente Stripe: ${shortStripe(billing.customerId)}</span>
               <span>Assinatura: ${shortStripe(billing.subscriptionId)}</span>
+              <span>E-mail onboarding: ${onboardingEmailDetail(shop)}</span>
               <span>Evento bruto: ${billing.lastEvent || "aguardando"}</span>
             </details>
           </div>

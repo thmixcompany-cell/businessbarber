@@ -60,6 +60,25 @@ try {
   const adminJson = JSON.stringify(adminState);
   if (adminJson.includes("EAATEST_SECRET_TOKEN") || adminJson.includes("app_secret_teste") || adminJson.includes("verify_token_teste")) throw new Error("whatsapp_secret_leaked_to_admin_state");
   const smokeRunId = Date.now().toString(36);
+  const stripeCheckoutEvent = {
+    id: `evt_${smokeRunId}`,
+    type: "checkout.session.completed",
+    data: {
+      object: {
+        object: "checkout.session",
+        id: `cs_${smokeRunId}`,
+        customer: `cus_${smokeRunId}`,
+        subscription: `sub_${smokeRunId}`,
+        client_reference_id: "shop-alpha",
+        customer_details: { email: "demo@businessbarber.local" },
+        metadata: { barbershop_id: "shop-alpha", owner_name: "Dono Demo", email: "demo@businessbarber.local", whatsapp: "5566992589032", city: "Cuiaba" },
+      },
+    },
+  };
+  await fetchJson("/api/stripe/webhook", { method: "POST", body: JSON.stringify(stripeCheckoutEvent) });
+  const afterStripe = await fetchJson("/api/admin/state", { headers: { Authorization: `Bearer ${adminSession.token}` } });
+  const stripeShop = afterStripe.barbershops.find((shop) => shop.id === "shop-alpha");
+  if (stripeShop?.subscriptionStatus !== "active" || stripeShop?.onboarding_email_status !== "pending" || stripeShop?.onboarding_email_error !== "email_not_configured") throw new Error("stripe_onboarding_email_state_invalid");
   const uniqueDigits = String(Date.now()).slice(-8);
   const clientPhone = `5599${uniqueDigits}`;
   const autoClientPhone = `5598${uniqueDigits}`;
