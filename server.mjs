@@ -99,7 +99,7 @@ function securityHeaders(extra = {}) {
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-    "Content-Security-Policy": "default-src 'self'; img-src 'self' data: https://www.facebook.com https://static.xx.fbcdn.net; style-src 'self'; script-src 'self' https://connect.facebook.net; connect-src 'self' https://graph.facebook.com https://www.facebook.com; frame-src https://www.facebook.com https://web.facebook.com; form-action 'self'; base-uri 'self'; frame-ancestors 'none'",
+    "Content-Security-Policy": "default-src 'self'; img-src 'self' data: https://www.facebook.com https://static.xx.fbcdn.net https://www.google.com https://www.google.com.br https://www.googleadservices.com https://www.googletagmanager.com; style-src 'self'; script-src 'self' https://connect.facebook.net https://www.googletagmanager.com; connect-src 'self' https://graph.facebook.com https://www.facebook.com https://www.google.com https://www.google.com.br https://www.googleadservices.com https://www.googletagmanager.com https://googleads.g.doubleclick.net; frame-src https://www.facebook.com https://web.facebook.com; form-action 'self'; base-uri 'self'; frame-ancestors 'none'",
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
     ...extra,
   };
