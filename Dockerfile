@@ -2,7 +2,9 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-COPY package.json ./
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
 COPY server.mjs ./
 COPY index.html app.html admin.html public.html privacidade.html termos.html cadastro.html sucesso.html onboarding.html ./
 COPY app.js admin.js public-booking.js cadastro.js sucesso.js styles.css ./
