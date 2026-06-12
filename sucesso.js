@@ -2,6 +2,13 @@ const params = new URLSearchParams(window.location.search);
 const session = params.get("session_id");
 const el = document.querySelector("#successSession");
 const whatsapp = document.querySelector("#successWhatsapp");
+if (session && window.trackGoogleAdsPurchase) {
+  const conversionKey = `businessBarberGoogleAdsPurchase:${session}`;
+  if (localStorage.getItem(conversionKey) !== "sent") {
+    window.trackGoogleAdsPurchase(session);
+    localStorage.setItem(conversionKey, "sent");
+  }
+}
 if (session && el) el.textContent = `Sessão Stripe: ${session.slice(0, 18)}...`;
 if (session && whatsapp) {
   const text = `Pagamento confirmado no Business Barber. Quero concluir meu onboarding. Sessão Stripe: ${session}`;

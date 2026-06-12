@@ -6,3 +6,12 @@ window.gtag = gtag;
 
 gtag("js", new Date());
 gtag("config", "AW-11311087522");
+
+window.trackGoogleAdsPurchase = function trackGoogleAdsPurchase(transactionId) {
+  gtag("event", "conversion", {
+    send_to: "AW-11311087522/rf6rCPmVrr0cEKL_xZEq",
+    value: 197.0,
+    currency: "BRL",
+    transaction_id: transactionId || "",
+  });
+};
