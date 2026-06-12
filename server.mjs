@@ -46,7 +46,7 @@ const emailProvider = String(process.env.EMAIL_PROVIDER || "resend").toLowerCase
 const resendApiKey = process.env.RESEND_API_KEY || "";
 const emailFrom = process.env.EMAIL_FROM || "Business Barber <onboarding@businessbarber.com.br>";
 const emailReplyTo = process.env.EMAIL_REPLY_TO || "thmixcompany@gmail.com";
-const onboardingWhatsapp = normalizePhone(process.env.ONBOARDING_WHATSAPP || "5566999999999");
+const onboardingWhatsapp = normalizePhone(process.env.ONBOARDING_WHATSAPP || "556631992916");
 const resendClient = emailProvider === "resend" && resendApiKey ? new Resend(resendApiKey) : null;
 
 const tenantCollections = [
@@ -1080,7 +1080,7 @@ function onboardingEmailPlan(barbershop = {}) {
 }
 
 function buildOnboardingWhatsAppLink(barbershop = {}) {
-  const phone = onboardingWhatsapp || "5566999999999";
+  const phone = onboardingWhatsapp || "556631992916";
   const message = [
     `Olá, aqui é ${barbershop.ownerName || "o responsável"} da ${barbershop.name || "barbearia"}.`,
     "Pagamento confirmado no Business Barber.",

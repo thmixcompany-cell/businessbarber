@@ -11,7 +11,7 @@ EMAIL_PROVIDER=resend
 RESEND_API_KEY=re_xxxxxxxxxxxxxxxxx
 EMAIL_FROM=Business Barber <onboarding@businessbarber.com.br>
 EMAIL_REPLY_TO=thmixcompany@gmail.com
-ONBOARDING_WHATSAPP=5566999999999
+ONBOARDING_WHATSAPP=556631992916
 ```
 
 Depois de salvar, faca redeploy do servico.

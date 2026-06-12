@@ -206,7 +206,7 @@ function safeText(value, fallback = "Não informado") {
 }
 
 function whatsappLinkForShop(shop) {
-  const phone = String(shop.ownerWhatsapp || "5566992589032").replace(/\D/g, "") || "5566992589032";
+  const phone = String(shop.ownerWhatsapp || "556631992916").replace(/\D/g, "") || "556631992916";
   const text = `Olá, ${shop.ownerName || "tudo bem"}! Pagamento recebido no Business Barber. Vamos concluir o onboarding da ${shop.name || "barbearia"}?`;
   return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
 }

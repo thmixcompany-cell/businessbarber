@@ -71,7 +71,7 @@ try {
         subscription: `sub_${smokeRunId}`,
         client_reference_id: "shop-alpha",
         customer_details: { email: "demo@businessbarber.local" },
-        metadata: { barbershop_id: "shop-alpha", owner_name: "Dono Demo", email: "demo@businessbarber.local", whatsapp: "5566992589032", city: "Cuiaba" },
+        metadata: { barbershop_id: "shop-alpha", owner_name: "Dono Demo", email: "demo@businessbarber.local", whatsapp: "556631992916", city: "Cuiaba" },
       },
     },
   };
