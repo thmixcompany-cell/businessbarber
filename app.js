@@ -860,9 +860,11 @@ function renderMetrics() {
 
   setMetric("#recoveredRevenue", money.format(state.recoveredRevenue));
   const dayOpenSlots = state.appointments.filter((item) => appointmentDate(item) === selectedScheduleDate() && item.open).length;
+  const paidSignals = (state.pixCharges || []).filter((charge) => String(charge.status || "").toLowerCase().includes("pago"));
+  const paidSignalsTotal = paidSignals.reduce((sum, charge) => sum + Number(charge.amount || 0), 0);
   setMetric("#openSlotsCount", String(dayOpenSlots));
   setMetric("#inactiveCount", String((state.inactiveClients || []).length));
-  setMetric("#noshowAvoided", money.format(680));
+  setMetric("#noshowAvoided", money.format(paidSignalsTotal));
 
   // Estes indicadores existem apenas no painel do fundador.
   // No painel da barbearia, não podem interromper o render das demais telas.
@@ -1374,7 +1376,7 @@ function renderMessageOutbox() {
         return;
       }
       const result = await response.json();
-      message.status = result.simulated ? "Sandbox: pronto" : "Enviada via API";
+      message.status = result.simulated ? "Modo teste: pronto" : "Enviada via API";
       if (!result.simulated) {
         const campaign = state.campaigns.find((item) => item.id === message.campaignId);
         if (campaign) {
@@ -1664,19 +1666,18 @@ function renderIntegrations() {
   const whatsappMetaState = whatsapp.embeddedSignupConfigured
     ? `Meta conectada${whatsapp.verifiedName ? ` · ${whatsapp.verifiedName}` : ""}`
     : (whatsapp.embeddedSignupReady ? "Meta pronta para conectar" : "Meta pendente no servidor");
-  const whatsappSecurityState = whatsapp.appSecretConfigured ? "webhook com assinatura" : "App Secret pendente";
-  const whatsappTemplateState = whatsapp.defaultTemplate ? `template ${whatsapp.defaultTemplate} (${whatsapp.templateLanguage || "pt_BR"})` : "template padrão";
-  const whatsappAutomationTemplates = `encaixe ${whatsapp.slotInviteTemplate || "encaixe_horario_vago"} · lembrete ${whatsapp.reminderTemplate || "lembrete_agendamento"}`;
+  const whatsappReady = Boolean(whatsapp.tokenConfigured && whatsapp.phoneNumberIdConfigured);
+  const whatsappStatusLabel = whatsappReady ? "WhatsApp conectado" : (whatsapp.embeddedSignupReady ? "Pronto para conectar" : "Aguardando configuração");
 
   integrationStatus.innerHTML = `
     <article class="integration-status-card">
       <strong>WhatsApp</strong>
-      <span>Status: ${whatsapp.status || "simulado"}</span>
-      <small>${whatsapp.tokenConfigured && whatsapp.phoneNumberIdConfigured ? `conectado (${whatsapp.credentialSource || "servidor"})` : "aguardando conexão"} · ${whatsappMetaState} · número ${whatsappConnection} · ${whatsappTemplateState} · ${whatsappAutomationTemplates} · ${whatsappSecurityState}</small>
+      <span>${whatsappStatusLabel}</span>
+      <small>${whatsappMetaState} · número ${whatsappConnection}</small>
     </article>
     <article class="integration-status-card">
       <strong>Pix</strong>
-      <span>Status: ${pix.status || "simulado"}</span>
+      <span>${pix.key ? "Pix configurado" : "Pix pendente"}</span>
       <small>sinal ${money.format(Number(pix.depositAmount || 15))} · ${pix.key  ?"chave configurada" : "sem chave"}</small>
     </article>
   `;
@@ -1735,7 +1736,7 @@ function renderBilling() {
   if (message) {
     message.textContent = billing.lastEvent
       ? `Último evento Stripe: ${billing.lastEvent}.`
-      : "Plano piloto: R$ 197/mês.";
+      : "Plano Business Barber: R$ 197/mês.";
   }
 }
 
@@ -1956,7 +1957,7 @@ function renderReports() {
   const funnelResponses = slotInvites.filter((message) => message.respondedAt || ["Cliente respondeu", "Agendado", "Aguardando Pix", "Recusado"].includes(message.status)).length;
   const funnelBooked = slotInvites.filter((message) => ["Agendado", "Aguardando Pix"].includes(message.status)).length;
   const funnelDeclined = slotInvites.filter((message) => message.status === "Recusado").length;
-  const funnelNoResponse = slotInvites.filter((message) => ["Sem resposta", "Convite enviado", "Sandbox: pronto", "Pronto para envio", "Aguardando resposta"].includes(message.status)).length;
+  const funnelNoResponse = slotInvites.filter((message) => ["Sem resposta", "Convite enviado", "Sandbox: pronto", "Modo teste: pronto", "Pronto para envio", "Aguardando resposta"].includes(message.status)).length;
   const funnelRevenue = slotInvites
     .filter((message) => ["Agendado", "Aguardando Pix"].includes(message.status))
     .reduce((sum, message) => sum + Number(message.value || 0), 0);
@@ -2017,13 +2018,17 @@ function advanceProspect(prospect) {
   showToast(`${prospect.barbershop} avanãou para: ${nextStatus}.`);
 }
 
-function showView(viewId) {
+function showView(viewId, triggerButton = null) {
   const target = document.querySelector(`#${viewId}`);
   if (!target) return;
-  document.querySelectorAll(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.view === viewId));
+  document.querySelectorAll(".nav-item").forEach((item) => {
+    const isDefaultMatch = item.dataset.view === viewId && !item.dataset.scrollTarget;
+    item.classList.toggle("active", triggerButton ? item === triggerButton : isDefaultMatch);
+  });
   document.querySelectorAll(".view").forEach((view) => view.classList.remove("active"));
   target.classList.add("active");
-  document.querySelector(".main")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const scrollTarget = triggerButton?.dataset.scrollTarget ? document.querySelector(`#${triggerButton.dataset.scrollTarget}`) : document.querySelector(".main");
+  scrollTarget?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function applyRoleExperience() {
@@ -2084,7 +2089,7 @@ function renderAll() {
 
 document.querySelectorAll(".nav-item").forEach((button) => {
   button.addEventListener("click", () => {
-    showView(button.dataset.view);
+    showView(button.dataset.view, button);
   });
 });
 

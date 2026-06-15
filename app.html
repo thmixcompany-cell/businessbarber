@@ -58,41 +58,25 @@
 
         <nav class="nav-list">
           <button class="nav-item employee-nav hidden" data-view="employee" type="button">
-            <span class="nav-icon">BB</span>
             Minha agenda
           </button>
-          <button class="nav-item active" data-view="dashboard" type="button">
-            <span class="nav-icon">⌂</span>
-            Agenda
-          </button>
+          <button class="nav-item active" data-view="dashboard" type="button">Início</button>
           <button class="nav-item" data-view="reactivation" type="button">
-            <span class="nav-icon">↻</span>
-            Clientes para recuperar
+            Recuperar clientes
           </button>
           <button class="nav-item" data-view="waitlist" type="button">
-            <span class="nav-icon">≡</span>
-            Preencher horários
+            Horários vagos
           </button>
-          <button class="nav-item" data-view="club" type="button">
-            <span class="nav-icon">★</span>
-            Clube e recorrência
-          </button>
-          <button class="nav-item" data-view="settings" type="button">
-            <span class="nav-icon">⚙</span>
-            Ajustes
-          </button>
-          <button class="nav-item" data-view="billing" type="button">
-            <span class="nav-icon">$</span>
-            Assinatura
+          <button class="nav-item" data-view="dashboard" data-scroll-target="scheduleList" type="button">
+            Agenda
           </button>
           <button class="nav-item" data-view="clients" type="button">
-            <span class="nav-icon">@</span>
             Clientes
           </button>
           <button class="nav-item" data-view="reports" type="button">
-            <span class="nav-icon">#</span>
             Resultados
           </button>
+          <button class="nav-item" data-view="settings" type="button">Ajustes</button>
         </nav>
 
         <div class="sidebar-card">
@@ -103,7 +87,7 @@
           </div>
           <small>72% alcançado</small>
         </div>
-        <div class="parent-company-badge">Produto da <strong>ThM IX Company</strong></div>
+        <footer class="app-sidebar-footer">Business Barber · ThM IX Company</footer>
       </aside>
 
       <main class="main">
@@ -123,7 +107,7 @@
           <div class="priority-header">
             <div>
               <span class="eyebrow">Prioridades de agora</span>
-              <h2>O que merece atenção primeiro</h2>
+              <h2>O que fazer hoje</h2>
             </div>
             <button class="secondary-button" id="priorityHeaderAction" data-priority-view="reactivation" type="button">Ver retornos</button>
           </div>
@@ -327,7 +311,7 @@
             <button class="secondary-button full" id="applySegment" type="button">Aplicar segmentação</button>
             <label class="field">
               Modelo
-              <textarea id="campaignText" rows="8">Oi, {{nome}}! Aqui e da Barbearia Norte. Faz um tempo que você não aparece por aqui. Temos alguns horários essa semana e se quiser voltar, eu consigo reservar seu melhor horário pelo WhatsApp.</textarea>
+              <textarea id="campaignText" rows="8">Oi, {{nome}}! Aqui é da {{barbearia}}. Faz um tempo que você não aparece por aqui. Temos alguns horários essa semana e, se quiser voltar, eu consigo reservar o melhor horário pelo WhatsApp.</textarea>
             </label>
             <button class="secondary-button full" id="saveCampaignDraft" type="button">Salvar rascunho</button>
             <button class="primary-button full" id="sendCampaign" type="button">Enviar para selecionados</button>
@@ -384,7 +368,7 @@
           </div>
         </section>
 
-        <section class="workspace-grid view" id="club">
+        <section class="workspace-grid view secondary-module" id="club">
           <div class="panel">
             <div class="panel-header">
               <div>
@@ -415,7 +399,7 @@
           </div>
         </section>
 
-        <section class="workspace-grid view" id="billing">
+        <section class="workspace-grid view secondary-module" id="billing">
           <div class="panel">
             <div class="panel-header">
               <div>
@@ -431,7 +415,7 @@
                 <button class="primary-button" id="startCheckout" type="button">Assinar agora</button>
                 <button class="secondary-button" id="manageBilling" type="button">Gerenciar assinatura</button>
               </div>
-              <p class="muted" id="billingMessage">Plano piloto: R$ 197/mês.</p>
+              <p class="muted" id="billingMessage">Plano Business Barber: R$ 197/mês.</p>
             </div>
           </div>
           <div class="panel">
@@ -443,7 +427,7 @@
             </div>
             <div class="setup-list">
               <article><strong>1. Checkout</strong><span>O dono da barbearia paga no ambiente seguro da Stripe.</span></article>
-              <article><strong>2. Webhook</strong><span>A Stripe avisa o Business Barber quando a assinatura ficar ativa.</span></article>
+              <article><strong>2. Confirmação</strong><span>O Business Barber recebe a confirmação do pagamento automaticamente.</span></article>
               <article><strong>3. Acesso</strong><span>O painel pode liberar, pausar ou sinalizar pendências de pagamento.</span></article>
             </div>
           </div>
@@ -563,65 +547,68 @@
                 <section>
                   <div class="mini-section-header">
                     <strong>WhatsApp</strong>
-                    <span>Cloud API por barbearia</span>
+                    <span>Conexão oficial da barbearia</span>
                   </div>
-                  <label class="field">
-                    Provedor
-                    <select id="whatsappProvider" name="whatsappProvider">
-                      <option value="whatsapp_cloud_api">WhatsApp Cloud API</option>
-                      <option value="zapi">Z-API</option>
-                      <option value="evolution">Evolution API</option>
-                      <option value="simulado">Simulado</option>
-                    </select>
-                  </label>
-                  <label class="field">
-                    Ambiente
-                    <select id="whatsappMode" name="whatsappMode">
-                      <option value="sandbox">Sandbox</option>
-                      <option value="production">Produção</option>
-                    </select>
-                  </label>
-                  <p class="secure-config-note">As credenciais ficam salvas somente no servidor. O painel mostra apenas status e máscara dos IDs.</p>
-                  <label class="field">
-                    Template padrão
-                    <input id="whatsappTemplate" name="whatsappTemplate" placeholder="retorno_cliente_sumido" />
-                  </label>
-                  <label class="field">
-                    Idioma do template
-                    <input id="whatsappTemplateLanguage" name="whatsappTemplateLanguage" placeholder="pt_BR" />
-                  </label>
-                  <label class="field">
-                    Template de encaixe automático
-                    <input id="whatsappSlotInviteTemplate" name="whatsappSlotInviteTemplate" placeholder="encaixe_horario_vago" />
-                  </label>
-                  <label class="field">
-                    Template de lembrete
-                    <input id="whatsappReminderTemplate" name="whatsappReminderTemplate" placeholder="lembrete_agendamento" />
-                  </label>
-                  <label class="field">
-                    WhatsApp Business Account ID
-                    <input id="whatsappBusinessAccountId" name="whatsappBusinessAccountId" autocomplete="off" placeholder="Opcional" />
-                  </label>
-                  <label class="field">
-                    Phone Number ID
-                    <input id="whatsappPhoneNumberId" name="whatsappPhoneNumberId" autocomplete="off" placeholder="Cole para conectar ou deixe vazio para manter" />
-                  </label>
-                  <label class="field">
-                    Access Token permanente
-                    <input id="whatsappAccessToken" name="whatsappAccessToken" type="password" autocomplete="new-password" placeholder="Cole para conectar ou deixe vazio para manter" />
-                  </label>
-                  <label class="field">
-                    App Secret
-                    <input id="whatsappAppSecret" name="whatsappAppSecret" type="password" autocomplete="new-password" placeholder="Usado para validar webhooks" />
-                  </label>
-                  <label class="field">
-                    Verify Token
-                    <input id="whatsappVerifyToken" name="whatsappVerifyToken" type="password" autocomplete="new-password" placeholder="Token criado por voce para o webhook" />
-                  </label>
-                  <label class="checkbox-row">
-                    <input id="whatsappClearCredentials" name="whatsappClearCredentials" type="checkbox" />
-                    Remover credenciais salvas desta barbearia
-                  </label>
+                  <p class="secure-config-note">Use “Conectar com Meta” para vincular o WhatsApp oficial. As credenciais técnicas ficam protegidas e não precisam fazer parte da rotina da barbearia.</p>
+                  <details class="advanced-config">
+                    <summary>Configuração avançada</summary>
+                    <label class="field">
+                      Provedor
+                      <select id="whatsappProvider" name="whatsappProvider">
+                        <option value="whatsapp_cloud_api">WhatsApp oficial</option>
+                        <option value="zapi">Z-API</option>
+                        <option value="evolution">Evolution API</option>
+                        <option value="simulado">Modo teste</option>
+                      </select>
+                    </label>
+                    <label class="field">
+                      Ambiente
+                      <select id="whatsappMode" name="whatsappMode">
+                        <option value="sandbox">Teste</option>
+                        <option value="production">Produção</option>
+                      </select>
+                    </label>
+                    <label class="field">
+                      Template padrão
+                      <input id="whatsappTemplate" name="whatsappTemplate" placeholder="retorno_cliente_sumido" />
+                    </label>
+                    <label class="field">
+                      Idioma do template
+                      <input id="whatsappTemplateLanguage" name="whatsappTemplateLanguage" placeholder="pt_BR" />
+                    </label>
+                    <label class="field">
+                      Template de encaixe automático
+                      <input id="whatsappSlotInviteTemplate" name="whatsappSlotInviteTemplate" placeholder="encaixe_horario_vago" />
+                    </label>
+                    <label class="field">
+                      Template de lembrete
+                      <input id="whatsappReminderTemplate" name="whatsappReminderTemplate" placeholder="lembrete_agendamento" />
+                    </label>
+                    <label class="field">
+                      Conta WhatsApp Business
+                      <input id="whatsappBusinessAccountId" name="whatsappBusinessAccountId" autocomplete="off" placeholder="Opcional" />
+                    </label>
+                    <label class="field">
+                      ID do número
+                      <input id="whatsappPhoneNumberId" name="whatsappPhoneNumberId" autocomplete="off" placeholder="Cole para conectar ou deixe vazio para manter" />
+                    </label>
+                    <label class="field">
+                      Token permanente
+                      <input id="whatsappAccessToken" name="whatsappAccessToken" type="password" autocomplete="new-password" placeholder="Cole para conectar ou deixe vazio para manter" />
+                    </label>
+                    <label class="field">
+                      App Secret
+                      <input id="whatsappAppSecret" name="whatsappAppSecret" type="password" autocomplete="new-password" placeholder="Usado para validar assinatura" />
+                    </label>
+                    <label class="field">
+                      Token de verificação
+                      <input id="whatsappVerifyToken" name="whatsappVerifyToken" type="password" autocomplete="new-password" placeholder="Token criado para confirmação" />
+                    </label>
+                    <label class="checkbox-row">
+                      <input id="whatsappClearCredentials" name="whatsappClearCredentials" type="checkbox" />
+                      Remover credenciais salvas desta barbearia
+                    </label>
+                  </details>
                 </section>
                 <section>
                   <div class="mini-section-header">
@@ -640,7 +627,7 @@
                   <label class="field">
                     Ambiente
                     <select id="pixMode" name="pixMode">
-                      <option value="sandbox">Sandbox</option>
+                      <option value="sandbox">Teste</option>
                       <option value="production">Produção</option>
                     </select>
                   </label>

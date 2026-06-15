@@ -5343,3 +5343,126 @@ body:has(.admin-shell) .commercial-admin-card {
     justify-self: start;
   }
 }
+
+/* ===== Product clarity pass ===== */
+.marketing-body h1,
+.marketing-body h2,
+.public-body h1,
+.public-body h2 {
+  font-family: "Sora", "Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+body:has(.app-shell) .sidebar {
+  gap: 18px;
+  padding-bottom: 20px;
+}
+
+body:has(.app-shell) .nav-list {
+  gap: 7px;
+}
+
+body:has(.app-shell) .nav-item {
+  min-height: 42px;
+  padding: 10px 13px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+body:has(.app-shell) .nav-icon {
+  display: none;
+}
+
+body:has(.app-shell) .parent-company-badge {
+  display: none;
+}
+
+.app-sidebar-footer {
+  margin-top: auto;
+  padding: 13px 2px 3px;
+  border-top: 1px solid rgba(255, 255, 255, .07);
+  color: rgba(248, 243, 235, .46);
+  font-size: 11px;
+  line-height: 1.45;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+body:has(.app-shell) .panel,
+body:has(.app-shell) .metric,
+body:has(.app-shell) .priority-board,
+body:has(.app-shell) .appointment,
+body:has(.app-shell) .client-row,
+body:has(.app-shell) .return-row,
+body:has(.app-shell) .wait-card,
+body:has(.app-shell) .setup-entity-card,
+body:has(.app-shell) .integration-status-card,
+body:has(.app-shell) .compact-list article,
+body:has(.app-shell) .billing-card,
+body:has(.app-shell) .revenue-box {
+  border-radius: 12px !important;
+}
+
+body:has(.app-shell) .primary-button,
+body:has(.app-shell) .secondary-button,
+body:has(.app-shell) .tiny-button,
+body:has(.app-shell) .icon-button,
+body:has(.admin-shell) .primary-button,
+body:has(.admin-shell) .secondary-button,
+body:has(.admin-shell) .tiny-button,
+body:has(.admin-shell) .icon-button {
+  border-radius: 8px !important;
+}
+
+body:has(.app-shell) .status-pill,
+body:has(.app-shell) .commercial-badge {
+  border-radius: 8px !important;
+}
+
+.advanced-config {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid rgba(232, 214, 184, .12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .035);
+}
+
+.advanced-config summary {
+  cursor: pointer;
+  color: #f1cf8f;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.advanced-config .field:first-of-type {
+  margin-top: 14px;
+}
+
+.public-shop-brand {
+  pointer-events: none;
+}
+
+.public-brand-monogram {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid rgba(231, 187, 116, .32);
+  border-radius: 10px;
+  color: #1b1309;
+  background: linear-gradient(180deg, #f1cf8f, #bd8750);
+  font-weight: 950;
+}
+
+.public-body .public-explainer {
+  border-radius: 12px;
+}
+
+.public-body .marketing-footer span {
+  color: rgba(245, 239, 229, .52);
+}
+
+.marketing-body .hero-dashboard,
+.marketing-body .release-dashboard {
+  overflow: hidden;
+}

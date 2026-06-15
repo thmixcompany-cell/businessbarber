@@ -22,7 +22,9 @@ function renderSlots() {
 }
 function renderBooking() {
   const shop = publicState.shop || {};
-  document.title = `${shop.name || "Agendamento"} | Business Barber`;
+  document.title = `${shop.name || "Agendamento online"}`;
+  const headerName = document.querySelector("#publicHeaderName");
+  if (headerName) headerName.textContent = shop.name || "Agendamento online";
   document.querySelector("#publicShopName").textContent = shop.name || "Barbearia";
   document.querySelector("#publicHeadline").textContent = publicState.publicBooking.headline || "Escolha seu horário com segurança.";
   const meta = [shop.city, shop.address, shop.instagram].filter(Boolean).map((item) => `<span>${escapeHtml(item)}</span>`).join("");
