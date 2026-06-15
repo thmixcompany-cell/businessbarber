@@ -4997,3 +4997,349 @@ body:has(.admin-shell) .pipeline-card header span:not(.status-pill) {
     grid-template-columns: 1fr;
   }
 }
+
+/* ===== Admin premium pass ===== */
+body:has(.admin-shell) {
+  background:
+    radial-gradient(circle at 70% -10%, rgba(205, 151, 72, .12), transparent 34%),
+    linear-gradient(180deg, #0b0c0c, #101112 48%, #090a0a);
+}
+
+body:has(.admin-shell) .admin-shell {
+  grid-template-columns: 264px minmax(0, 1fr);
+  color: #f6f0e8;
+}
+
+body:has(.admin-shell) .admin-sidebar {
+  gap: 18px;
+  padding: 28px 22px 20px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,0)),
+    linear-gradient(160deg, #15120e, #0e0d0c 64%, #090909);
+}
+
+body:has(.admin-shell) .admin-sidebar .brand {
+  align-items: center;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+}
+
+body:has(.admin-shell) .admin-sidebar .brand strong {
+  max-width: 150px;
+  font-size: 15px;
+  line-height: 1.18;
+}
+
+body:has(.admin-shell) .admin-sidebar .brand span {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+body:has(.admin-shell) .admin-sidebar .nav-list {
+  gap: 8px;
+}
+
+body:has(.admin-shell) .admin-sidebar .nav-item {
+  min-height: 43px;
+  padding: 10px 13px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+body:has(.admin-shell) .admin-return {
+  margin-top: auto;
+  min-height: 42px;
+  justify-content: center;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.admin-sidebar-footer {
+  padding: 14px 2px 4px;
+  border-top: 1px solid rgba(255,255,255,.07);
+  color: rgba(248,243,235,.46);
+  font-size: 11px;
+  letter-spacing: .08em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+body:has(.admin-shell) .parent-company-badge {
+  display: none;
+}
+
+body:has(.admin-shell) .admin-main {
+  padding: 26px clamp(22px, 3vw, 42px) 64px;
+  background:
+    linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px);
+  background-size: 34px 34px;
+}
+
+body:has(.admin-shell) .admin-main > * {
+  max-width: 1180px;
+  margin-inline: auto;
+}
+
+body:has(.admin-shell) .admin-topbar {
+  margin-bottom: 18px;
+  padding: 22px 24px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(231,187,116,.08), rgba(255,255,255,.035)),
+    rgba(18,19,20,.82);
+}
+
+body:has(.admin-shell) .admin-topbar h1 {
+  max-width: 700px;
+  margin-top: 8px;
+  font-size: clamp(26px, 3vw, 38px);
+  line-height: 1.04;
+  letter-spacing: -.035em;
+}
+
+body:has(.admin-shell) .admin-topbar p {
+  max-width: 720px;
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+body:has(.admin-shell) .admin-view.active {
+  gap: 16px;
+}
+
+body:has(.admin-shell) .admin-grid {
+  grid-template-columns: minmax(0, 1.25fr) minmax(330px, .78fr);
+  gap: 16px;
+  align-items: start;
+}
+
+body:has(.admin-shell) .admin-metric-grid {
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+body:has(.admin-shell) .metric,
+body:has(.admin-shell) .panel {
+  border-radius: 16px;
+  border-color: rgba(235, 210, 170, .13);
+  background:
+    linear-gradient(160deg, rgba(255,255,255,.07), rgba(255,255,255,.025)),
+    rgba(20, 21, 21, .92);
+  box-shadow: 0 20px 54px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.055);
+}
+
+body:has(.admin-shell) .panel {
+  padding: 18px;
+}
+
+body:has(.admin-shell) .panel-header {
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255,255,255,.075);
+}
+
+body:has(.admin-shell) .panel h2 {
+  margin-top: 4px;
+  font-size: 19px;
+  line-height: 1.18;
+  letter-spacing: -.02em;
+}
+
+body:has(.admin-shell) .compact-list {
+  gap: 10px;
+}
+
+body:has(.admin-shell) .polished-shop-card {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  padding: 16px !important;
+  border-radius: 14px;
+  border: 1px solid rgba(232, 199, 146, .13);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.08), rgba(255,255,255,.028)),
+    #161818;
+}
+
+body:has(.admin-shell) .polished-shop-card .shop-card-main {
+  gap: 9px;
+}
+
+body:has(.admin-shell) .shop-card-title-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 9px;
+}
+
+body:has(.admin-shell) .shop-card-title-row strong {
+  font-size: 16px;
+  line-height: 1.2;
+  letter-spacing: -.015em;
+}
+
+body:has(.admin-shell) .shop-card-title-row span:not(.status-pill) {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+body:has(.admin-shell) .status-pill,
+body:has(.admin-shell) .commercial-badge {
+  min-height: 26px;
+  max-width: 100%;
+  padding: 6px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1.15;
+  white-space: normal;
+}
+
+body:has(.admin-shell) .status-pill {
+  justify-self: start;
+  text-align: center;
+}
+
+body:has(.admin-shell) .shop-contact-line {
+  gap: 6px;
+  font-size: 12px;
+}
+
+body:has(.admin-shell) .shop-contact-line span {
+  max-width: 100%;
+  padding: 5px 8px;
+  border-radius: 9px;
+  overflow-wrap: anywhere;
+}
+
+body:has(.admin-shell) .shop-badge-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 6px;
+}
+
+body:has(.admin-shell) .commercial-badge {
+  justify-content: center;
+  text-align: center;
+}
+
+body:has(.admin-shell) .technical-details {
+  margin-top: 2px;
+  padding-top: 8px;
+}
+
+body:has(.admin-shell) .technical-details summary {
+  font-size: 12px;
+}
+
+body:has(.admin-shell) .technical-details span {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: 7px 0 0;
+  overflow-wrap: anywhere;
+}
+
+body:has(.admin-shell) .polished-actions {
+  min-width: 0;
+  width: 100%;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: center;
+  gap: 8px;
+}
+
+body:has(.admin-shell) .polished-actions .tiny-button {
+  min-height: 36px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  white-space: normal;
+  text-align: center;
+}
+
+body:has(.admin-shell) .polished-actions .primary-action {
+  border-color: rgba(231,187,116,.34);
+  color: #17110a;
+  background: linear-gradient(180deg, #f1cf8f, #c48a4c);
+}
+
+body:has(.admin-shell) .admin-checklist {
+  gap: 10px;
+}
+
+body:has(.admin-shell) .admin-checklist label {
+  min-height: 54px;
+  padding: 13px 15px;
+  border-radius: 12px;
+  font-size: 14px;
+}
+
+body:has(.admin-shell) .admin-checklist input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+}
+
+body:has(.admin-shell) .polished-summary-card {
+  padding: 15px !important;
+  border-radius: 14px;
+}
+
+body:has(.admin-shell) .polished-summary-card strong {
+  font-size: 16px;
+}
+
+body:has(.admin-shell) .polished-summary-card span:not(.status-pill) {
+  font-size: 12px;
+}
+
+body:has(.admin-shell) .billing-summary-row,
+body:has(.admin-shell) .stripe-events-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+}
+
+body:has(.admin-shell) .admin-card-note {
+  margin: 0;
+  color: rgba(246,240,232,.62);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+body:has(.admin-shell) .commercial-admin-card {
+  overflow: hidden;
+}
+
+@media (max-width: 1180px) {
+  body:has(.admin-shell) .admin-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  body:has(.admin-shell) .admin-shell {
+    grid-template-columns: 1fr;
+  }
+  body:has(.admin-shell) .admin-sidebar {
+    position: static;
+    height: auto;
+  }
+  body:has(.admin-shell) .polished-shop-card {
+    grid-template-columns: 1fr;
+  }
+  body:has(.admin-shell) .polished-actions {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  body:has(.admin-shell) .shop-card-title-row {
+    grid-template-columns: 1fr;
+  }
+  body:has(.admin-shell) .status-pill {
+    justify-self: start;
+  }
+}

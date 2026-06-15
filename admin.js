@@ -286,7 +286,6 @@ function renderAdminBarbershops() {
             <div class="shop-badge-row">
               <span class="commercial-badge ${hasStripe ? "good" : "warning"}">${stripeLinkedLabel(billing)}</span>
               <span class="commercial-badge ${billing.lastEvent ? "good" : "warning"}">${lastEvent}</span>
-              <span class="commercial-badge muted">${renewalLabel(billing)}</span>
               <span class="commercial-badge ${onboardingClass(shop)}">${next}</span>
               <span class="commercial-badge ${onboardingEmailClass(shop)}">${onboardingEmailLabel(shop)}</span>
             </div>
@@ -299,7 +298,7 @@ function renderAdminBarbershops() {
             </details>
           </div>
           <div class="card-side-actions polished-actions">
-            <a class="tiny-button" href="${whatsappLinkForShop(shop)}" target="_blank" rel="noreferrer">Onboarding</a>
+            <a class="tiny-button primary-action" href="${whatsappLinkForShop(shop)}" target="_blank" rel="noreferrer">Onboarding</a>
             <a class="tiny-button" href="${publicHref}" target="_blank" rel="noreferrer">Página pública</a>
           </div>
         </article>
@@ -339,7 +338,6 @@ function renderAdminBilling() {
             <div class="shop-badge-row">
               <span class="commercial-badge ${billing.subscriptionId || billing.customerId ? "good" : "warning"}">${stripeLinkedLabel(billing)}</span>
               <span class="commercial-badge ${billing.lastEvent ? "good" : "warning"}">${stripeEventLabel(billing.lastEvent)}</span>
-              <span class="commercial-badge muted">${renewalLabel(billing)}</span>
               <span class="commercial-badge ${onboardingClass(shop)}">${nextStepLabel(shop)}</span>
               <span class="commercial-badge ${onboardingEmailClass(shop)}">${onboardingEmailLabel(shop)}</span>
             </div>
@@ -353,7 +351,7 @@ function renderAdminBilling() {
             </details>
           </div>
           <div class="card-side-actions polished-actions">
-            <a class="tiny-button" href="${whatsappLinkForShop(shop)}" target="_blank" rel="noreferrer">Onboarding</a>
+            <a class="tiny-button primary-action" href="${whatsappLinkForShop(shop)}" target="_blank" rel="noreferrer">Onboarding</a>
             <a class="tiny-button" href="/onboarding.html" target="_blank" rel="noreferrer">Checklist</a>
           </div>
         </article>`;
