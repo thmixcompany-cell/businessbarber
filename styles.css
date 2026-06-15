@@ -399,6 +399,24 @@ a {
   color: rgba(248, 243, 235, 0.82);
 }
 
+.password-change-screen {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at top, rgba(210, 163, 95, 0.16), transparent 34%),
+    linear-gradient(145deg, #0c0d0e, #171511);
+}
+
+.password-change-screen.hidden {
+  display: none;
+}
+
+.password-change-card {
+  border-color: rgba(210, 163, 95, 0.3);
+}
+
 .app-shell,
 .admin-shell {
   display: grid;

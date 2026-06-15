@@ -412,6 +412,8 @@ const auditList = document.querySelector("#auditList");
 const bookingLink = document.querySelector("#bookingLink");
 const loginScreen = document.querySelector("#loginScreen");
 const appShell = document.querySelector("#appShell");
+const passwordChangeScreen = document.querySelector("#passwordChangeScreen");
+const passwordChangeForm = document.querySelector("#passwordChangeForm");
 const toast = document.querySelector("#toast");
 let pendingInvite = null;
 
@@ -419,6 +421,25 @@ function showToast(message) {
   toast.textContent = message;
   toast.classList.add("show");
   setTimeout(() => toast.classList.remove("show"), 2800);
+}
+
+function needsPasswordChange(user = {}) {
+  return Boolean(user.forcePasswordChange);
+}
+
+function showPasswordChange(session = getSession()) {
+  if (loginScreen) loginScreen.classList.add("hidden");
+  if (appShell) appShell.hidden = true;
+  if (passwordChangeScreen) passwordChangeScreen.classList.remove("hidden");
+  if (session?.user) {
+    localStorage.setItem(authKey, JSON.stringify(session));
+  }
+}
+
+function showAuthenticatedApp() {
+  if (passwordChangeScreen) passwordChangeScreen.classList.add("hidden");
+  loginScreen.classList.add("hidden");
+  appShell.hidden = false;
 }
 
 function daysSince(dateText) {
@@ -2912,8 +2933,13 @@ document.querySelector("#loginForm").addEventListener("submit", async (event) =>
 
   const session = await response.json();
   localStorage.setItem(authKey, JSON.stringify(session));
-  loginScreen.classList.add("hidden");
-  appShell.hidden = false;
+  if (needsPasswordChange(session.user)) {
+    showPasswordChange(session);
+    showToast("Troque a senha temporária para acessar o painel.");
+    return;
+  }
+
+  showAuthenticatedApp();
 
   try {
     await hydrateStateFromApi();
@@ -2923,6 +2949,40 @@ document.querySelector("#loginForm").addEventListener("submit", async (event) =>
   }
   showToast("Login realizado.");
 });
+
+if (passwordChangeForm) {
+  passwordChangeForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const password = String(formData.get("password") || "");
+    const confirmPassword = String(formData.get("confirmPassword") || "");
+    if (password.length < 10) {
+      showToast("Use uma senha com pelo menos 10 caracteres.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      showToast("As senhas não conferem.");
+      return;
+    }
+    const response = await apiFetch("/api/auth/change-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password, forced: true }),
+    }).catch(() => null);
+    if (!response?.ok) {
+      showToast("Não foi possível trocar a senha agora.");
+      return;
+    }
+    const result = await response.json();
+    const session = getSession();
+    localStorage.setItem(authKey, JSON.stringify({ ...session, user: result.user || session.user }));
+    event.currentTarget.reset();
+    showAuthenticatedApp();
+    await hydrateStateFromApi();
+    renderAll();
+    showToast("Senha alterada. Painel liberado.");
+  });
+}
 
 async function initApp() {
   const session = getSession();
@@ -2940,8 +3000,13 @@ async function initApp() {
     return;
   }
 
-  loginScreen.classList.add("hidden");
-  appShell.hidden = false;
+  const me = await response.json();
+  if (needsPasswordChange(me.user)) {
+    showPasswordChange({ ...session, user: me.user });
+    return;
+  }
+
+  showAuthenticatedApp();
   await hydrateStateFromApi();
   renderAll();
 }

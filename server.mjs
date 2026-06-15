@@ -14,6 +14,7 @@ const appUrl = process.env.APP_URL || `http://localhost:${port}`;
 const maxBodyBytes = 1024 * 1024;
 const sessions = new Map();
 const rateLimits = new Map();
+let sessionCleanupCounter = 0;
 const storageProvider = String(process.env.STORAGE_PROVIDER || "json").toLowerCase();
 const supabaseUrl = String(process.env.SUPABASE_URL || "").replace(/\/$/, "");
 const supabaseSecret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -25,6 +26,7 @@ const whatsappAccessToken = process.env.WHATSAPP_ACCESS_TOKEN || "";
 const whatsappPhoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || "";
 const whatsappVerifyToken = process.env.WHATSAPP_VERIFY_TOKEN || "";
 const whatsappAppSecret = process.env.WHATSAPP_APP_SECRET || "";
+const whatsappBusinessAccountId = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || process.env.WHATSAPP_WABA_ID || "";
 const whatsappMode = (process.env.WHATSAPP_MODE || "sandbox").toLowerCase();
 const whatsappDefaultTemplate = process.env.WHATSAPP_DEFAULT_TEMPLATE || "retorno_cliente_sumido";
 const whatsappTemplateLanguage = process.env.WHATSAPP_TEMPLATE_LANGUAGE || "pt_BR";
@@ -65,6 +67,12 @@ function hashPassword(password) {
   const salt = randomBytes(16).toString("hex");
   const key = scryptSync(String(password), salt, 64).toString("hex");
   return `scrypt:${salt}:${key}`;
+}
+
+function generateTemporaryPassword(length = 14) {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@$%";
+  const bytes = randomBytes(length);
+  return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join("");
 }
 
 function verifyPassword(password, storedHash) {
@@ -145,9 +153,33 @@ function addAudit(db, action, actor = "system", metadata = {}, barbershopId = nu
   db.auditLogs = [{ id: makeId("audit"), at: new Date().toISOString(), actor, action, barbershopId, metadata }, ...(db.auditLogs || [])].slice(0, 500);
 }
 
-function createSession(user) {
+function sessionExpiryMs(session) {
+  if (!session) return 0;
+  if (typeof session.expiresAt === "number") return session.expiresAt;
+  const parsed = Date.parse(session.expiresAt || "");
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function cleanupExpiredSessions(db) {
+  const now = Date.now();
+  let changed = false;
+  for (const [token, session] of sessions.entries()) {
+    if (sessionExpiryMs(session) <= now) {
+      sessions.delete(token);
+      changed = true;
+    }
+  }
+  const before = (db.sessions || []).length;
+  db.sessions = (db.sessions || []).filter((session) => sessionExpiryMs(session) > now);
+  return changed || db.sessions.length !== before;
+}
+
+function createSession(db, user) {
   const token = randomBytes(32).toString("hex");
   const expiresAt = Date.now() + 1000 * 60 * 60 * 12;
+  const session = { token, userId: user.id, expiresAt: new Date(expiresAt).toISOString() };
+  db.sessions = Array.isArray(db.sessions) ? db.sessions : [];
+  db.sessions = [session, ...db.sessions.filter((item) => item.token !== token)].slice(0, 1000);
   sessions.set(token, { userId: user.id, expiresAt });
   return { token, expiresAt: new Date(expiresAt).toISOString(), user: publicUser(user) };
 }
@@ -155,8 +187,20 @@ function createSession(user) {
 function getSessionUser(req, db) {
   const auth = req.headers.authorization || "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-  const session = sessions.get(token);
-  if (!session || session.expiresAt < Date.now()) return null;
+  if (!token) return null;
+  let session = sessions.get(token);
+  if (!session) {
+    const persisted = (db.sessions || []).find((item) => item.token === token);
+    if (persisted) {
+      session = { userId: persisted.userId, expiresAt: sessionExpiryMs(persisted) };
+      sessions.set(token, session);
+    }
+  }
+  if (!session || sessionExpiryMs(session) < Date.now()) {
+    sessions.delete(token);
+    db.sessions = (db.sessions || []).filter((item) => item.token !== token);
+    return null;
+  }
   return (db.users || []).find((user) => user.id === session.userId && user.active !== false) || null;
 }
 
@@ -215,8 +259,8 @@ function whatsappInternalConfig(db, shopId) {
     templateLanguage: whatsapp.templateLanguage || whatsappTemplateLanguage,
     slotInviteTemplate: whatsapp.slotInviteTemplate || whatsappSlotInviteTemplate,
     reminderTemplate: whatsapp.reminderTemplate || whatsappReminderTemplate,
-    businessAccountId: whatsapp.businessAccountId || whatsapp.wabaId || "",
-    wabaId: whatsapp.wabaId || whatsapp.businessAccountId || "",
+    businessAccountId: whatsapp.businessAccountId || whatsapp.wabaId || whatsappBusinessAccountId,
+    wabaId: whatsapp.wabaId || whatsapp.businessAccountId || whatsappBusinessAccountId,
     displayPhoneNumber: whatsapp.displayPhoneNumber || "",
     verifiedName: whatsapp.verifiedName || "",
     embeddedSignupConnectedAt: whatsapp.embeddedSignupConnectedAt || "",
@@ -260,6 +304,66 @@ function publicWhatsappConfig(db, shopId) {
   };
 }
 
+function whatsappCredentialStatus(db, shopId) {
+  const config = whatsappInternalConfig(db, shopId);
+  return {
+    mode: config.mode,
+    credentialSource: config.credentialSource,
+    requiredForRealSend: {
+      WHATSAPP_ACCESS_TOKEN: Boolean(config.accessToken),
+      WHATSAPP_PHONE_NUMBER_ID: Boolean(config.phoneNumberId),
+      WHATSAPP_APP_SECRET: Boolean(config.appSecret),
+      WHATSAPP_VERIFY_TOKEN: Boolean(config.verifyToken),
+      WHATSAPP_BUSINESS_ACCOUNT_ID: Boolean(config.businessAccountId || config.wabaId),
+    },
+    readyForRealSend: config.mode === "production" && Boolean(config.accessToken && config.phoneNumberId),
+    readyForWebhookValidation: Boolean(config.appSecret && config.verifyToken),
+    phoneNumberIdMasked: maskSecret(config.phoneNumberId),
+    businessAccountIdMasked: maskSecret(config.businessAccountId || config.wabaId),
+  };
+}
+
+async function whatsappHealthcheck(db, shopId) {
+  const config = whatsappInternalConfig(db, shopId);
+  const credentials = whatsappCredentialStatus(db, shopId);
+  if (!config.accessToken || !config.phoneNumberId) {
+    return {
+      ok: false,
+      graphApiReachable: false,
+      message: "Configure WHATSAPP_ACCESS_TOKEN e WHATSAPP_PHONE_NUMBER_ID para testar a Graph API.",
+      credentials,
+    };
+  }
+  try {
+    const data = await graphGet(`/${config.phoneNumberId}`, config.accessToken, { fields: "id,display_phone_number,verified_name,code_verification_status" });
+    return {
+      ok: true,
+      graphApiReachable: true,
+      message: "Credenciais aceitas pela Graph API.",
+      credentials,
+      phoneNumber: {
+        idMasked: maskSecret(data.id),
+        displayPhoneNumber: data.display_phone_number || "",
+        verifiedName: data.verified_name || "",
+        codeVerificationStatus: data.code_verification_status || "",
+      },
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      graphApiReachable: false,
+      message: "A Meta recusou a consulta. Verifique token, permissões e phone_number_id.",
+      credentials,
+      meta: {
+        status: error.status || 500,
+        code: error.details?.error?.code || "",
+        type: error.details?.error?.type || "",
+        message: String(error.details?.error?.message || error.message || "meta_graph_get_failed").slice(0, 220),
+      },
+    };
+  }
+}
+
 function integrationFor(db, shopId) {
   const fallback = db.integrations || {};
   const source = whatsappSourceFor(db, shopId);
@@ -288,6 +392,7 @@ function normalizeDb(raw) {
   db.stripeEvents = Array.isArray(db.stripeEvents) ? db.stripeEvents : [];
   db.checkoutRequests = Array.isArray(db.checkoutRequests) ? db.checkoutRequests : [];
   db.marketingEvents = Array.isArray(db.marketingEvents) ? db.marketingEvents : [];
+  db.sessions = Array.isArray(db.sessions) ? db.sessions : [];
   db.integrationsByShop = db.integrationsByShop || {};
   db.publicBookingByShop = db.publicBookingByShop || {};
   db.onboardingByShop = db.onboardingByShop || {};
@@ -1091,6 +1196,10 @@ function onboardingEmailPlan(barbershop = {}) {
   return barbershop.plan ? `Business Barber - Plano ${barbershop.plan}` : "Business Barber - Plano Piloto";
 }
 
+function appLoginUrl() {
+  return `${appUrl.replace(/\/$/, "")}/app.html`;
+}
+
 function buildOnboardingWhatsAppLink(barbershop = {}) {
   const phone = onboardingWhatsapp || "556631992916";
   const message = [
@@ -1101,12 +1210,15 @@ function buildOnboardingWhatsAppLink(barbershop = {}) {
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 }
 
-function buildOnboardingEmailHtml(barbershop = {}) {
+function buildOnboardingEmailHtml(barbershop = {}, account = {}) {
   const ownerName = escapeHtml(barbershop.ownerName || "tudo bem");
   const shopName = escapeHtml(barbershop.name || "sua barbearia");
   const city = escapeHtml(barbershop.city || "Não informada");
   const whatsapp = escapeHtml(barbershop.ownerWhatsapp || "Não informado");
   const email = escapeHtml(barbershop.ownerEmail || "Não informado");
+  const loginEmail = escapeHtml(account.email || barbershop.ownerEmail || "Não informado");
+  const temporaryPassword = escapeHtml(account.temporaryPassword || "");
+  const loginLink = escapeHtml(appLoginUrl());
   const plan = escapeHtml(onboardingEmailPlan(barbershop));
   const value = escapeHtml(`${formatMoneyBRL(barbershop.monthlyPrice || 197)}/mês`);
   const whatsappLink = escapeHtml(buildOnboardingWhatsAppLink(barbershop));
@@ -1141,6 +1253,15 @@ function buildOnboardingEmailHtml(barbershop = {}) {
               <td style="padding:28px 30px;">
                 <p style="margin:0 0 22px;color:#e7dccb;font-size:16px;line-height:1.65;">Agora vamos iniciar a implantação assistida para deixar sua operação pronta para recuperar clientes, preencher horários vagos e acompanhar a receita recuperada pelo painel.</p>
                 <a href="${whatsappLink}" style="display:inline-block;background:#d9a95d;color:#110d08;text-decoration:none;font-weight:800;border-radius:12px;padding:15px 22px;margin:0 0 28px;">Concluir onboarding no WhatsApp</a>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 26px;background:#21180f;border:1px solid rgba(217,169,93,.32);border-radius:14px;">
+                  <tr><td style="padding:20px 22px;">
+                    <h2 style="margin:0 0 12px;font-size:18px;color:#fff;">Acesso ao painel</h2>
+                    <p style="margin:0 0 8px;color:#d8cdbc;"><strong style="color:#fff;">Link:</strong> <a href="${loginLink}" style="color:#d9a95d;">${loginLink}</a></p>
+                    <p style="margin:0 0 8px;color:#d8cdbc;"><strong style="color:#fff;">E-mail:</strong> ${loginEmail}</p>
+                    ${temporaryPassword ? `<p style="margin:0 0 10px;color:#d8cdbc;"><strong style="color:#fff;">Senha temporária:</strong> <span style="font-family:Consolas,Menlo,monospace;color:#fff;background:rgba(255,255,255,.08);padding:4px 7px;border-radius:7px;">${temporaryPassword}</span></p>` : ""}
+                    <p style="margin:0;color:#b8aa98;font-size:13px;line-height:1.55;">Por segurança, troque esta senha no primeiro acesso. O painel ficará bloqueado até a alteração.</p>
+                  </td></tr>
+                </table>
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 26px;background:#1b1712;border:1px solid rgba(255,255,255,.08);border-radius:14px;">
                   <tr><td style="padding:20px 22px;">
                     <h2 style="margin:0 0 14px;font-size:18px;color:#fff;">Dados recebidos</h2>
@@ -1172,7 +1293,7 @@ function buildOnboardingEmailHtml(barbershop = {}) {
 </html>`;
 }
 
-function buildOnboardingEmailText(barbershop = {}) {
+function buildOnboardingEmailText(barbershop = {}, account = {}) {
   return [
     `Olá, ${barbershop.ownerName || "tudo bem"}.`,
     "",
@@ -1196,13 +1317,19 @@ function buildOnboardingEmailText(barbershop = {}) {
     `Plano: ${onboardingEmailPlan(barbershop)}`,
     `Valor: ${formatMoneyBRL(barbershop.monthlyPrice || 197)}/mês`,
     "",
+    "Acesso ao painel:",
+    `Link: ${appLoginUrl()}`,
+    `E-mail: ${account.email || barbershop.ownerEmail || "Não informado"}`,
+    ...(account.temporaryPassword ? [`Senha temporária: ${account.temporaryPassword}`] : []),
+    "Troque esta senha no primeiro acesso. O painel ficará bloqueado até a alteração.",
+    "",
     `Concluir onboarding no WhatsApp: ${buildOnboardingWhatsAppLink(barbershop)}`,
     "",
     "Business Barber é um produto da ThM IX Company.",
   ].join("\n");
 }
 
-async function sendOnboardingEmail(barbershop = {}) {
+async function sendOnboardingEmail(barbershop = {}, account = {}) {
   if (barbershop.onboarding_email_status === "sent" && barbershop.onboarding_email_sent_at) {
     return { ok: true, skipped: true, status: "sent", reason: "already_sent" };
   }
@@ -1227,8 +1354,8 @@ async function sendOnboardingEmail(barbershop = {}) {
       to: [recipient],
       replyTo: emailReplyTo,
       subject: "Pagamento confirmado — vamos ativar sua barbearia",
-      html: buildOnboardingEmailHtml(barbershop),
-      text: buildOnboardingEmailText(barbershop),
+      html: buildOnboardingEmailHtml(barbershop, account),
+      text: buildOnboardingEmailText(barbershop, account),
     });
     if (response?.error) throw new Error(response.error.message || "resend_send_failed");
     barbershop.onboarding_email_status = "sent";
@@ -1242,6 +1369,41 @@ async function sendOnboardingEmail(barbershop = {}) {
     barbershop.onboarding_email_error = String(error?.message || error || "resend_send_failed").slice(0, 500);
     return { ok: false, status: "failed", error: barbershop.onboarding_email_error };
   }
+}
+
+function ensureOwnerUserAfterPayment(db, barbershop) {
+  if (!barbershop?.id) return { created: false, reason: "missing_barbershop" };
+  const existingOwner = (db.users || []).find((user) => user.role === "owner" && user.barbershopId === barbershop.id && user.active !== false);
+  if (existingOwner) return { created: false, user: existingOwner, reason: "owner_exists" };
+
+  const email = sanitizeEmail(barbershop.ownerEmail || barbershop.billing?.customerEmail || "");
+  if (!validEmail(email)) return { created: false, reason: "missing_owner_email" };
+
+  const existingByEmail = (db.users || []).find((user) => String(user.email || "").toLowerCase() === email);
+  if (existingByEmail) {
+    existingByEmail.role = "owner";
+    existingByEmail.barbershopId = barbershop.id;
+    existingByEmail.active = true;
+    return { created: false, user: existingByEmail, email, reason: "email_reassigned" };
+  }
+
+  const temporaryPassword = generateTemporaryPassword();
+  const user = {
+    id: makeId("user"),
+    name: sanitizeText(barbershop.ownerName || "Dono da barbearia", 120),
+    email,
+    role: "owner",
+    barbershopId: barbershop.id,
+    active: true,
+    passwordHash: hashPassword(temporaryPassword),
+    mustChangePassword: true,
+    forcePasswordChange: true,
+    createdAt: new Date().toISOString(),
+    createdBy: "stripe_checkout",
+  };
+  db.users.push(user);
+  addAudit(db, "user.auto_created_post_payment", "system", { userId: user.id, email }, barbershop.id);
+  return { created: true, user, email, temporaryPassword };
 }
 
 async function stripeRequest(pathname, params) {
@@ -1450,12 +1612,13 @@ async function handleStripeWebhook(req, res) {
   const update = updateShopBillingFromStripe(db, event);
   if (event.type === "checkout.session.completed" && update.shop) {
     recordMarketingEvent(db, "purchase_confirmed", { shopId: update.shopId, sessionId: event?.data?.object?.id || "", plan: update.shop.plan || "Piloto", value: Number(update.shop.monthlyPrice || 197) });
-    const emailResult = await sendOnboardingEmail(update.shop);
+    const accountResult = ensureOwnerUserAfterPayment(db, update.shop);
+    const emailResult = await sendOnboardingEmail(update.shop, accountResult.created ? { email: accountResult.email, temporaryPassword: accountResult.temporaryPassword } : { email: update.shop.ownerEmail || update.shop.billing?.customerEmail || "" });
     addAudit(
       db,
       emailResult.ok ? "onboarding.email_sent" : `onboarding.email_${emailResult.status || "failed"}`,
       "system",
-      { provider: "resend", skipped: Boolean(emailResult.skipped), error: emailResult.error || "", messageId: emailResult.id || "" },
+      { provider: "resend", skipped: Boolean(emailResult.skipped), error: emailResult.error || "", messageId: emailResult.id || "", accountCreated: Boolean(accountResult.created), accountReason: accountResult.reason || "" },
       update.shopId,
     );
   }
@@ -1508,6 +1671,8 @@ async function handleApi(req, res, url) {
   if (pathname.startsWith("/api/public/") && isRateLimited(req, "public", 25)) return sendJson(res, 429, { error: "rate_limited" });
   if (pathname === "/api/login" && isRateLimited(req, "login", 10)) return sendJson(res, 429, { error: "too_many_attempts" });
   const db = await readDb();
+  sessionCleanupCounter += 1;
+  if (sessionCleanupCounter % 25 === 0 && cleanupExpiredSessions(db)) await writeDb(db);
 
   if (pathname === "/api/login" && req.method === "POST") {
     const body = await readBody(req);
@@ -1518,8 +1683,9 @@ async function handleApi(req, res, url) {
       return sendJson(res, 401, { error: "invalid_credentials" });
     }
     if (String(user.passwordHash).startsWith("sha256:")) user.passwordHash = hashPassword(body.password);
+    const session = createSession(db, user);
     addAudit(db, "auth.login_success", email, {}, user.barbershopId || null); await writeDb(db);
-    return sendJson(res, 200, createSession(user));
+    return sendJson(res, 200, session);
   }
 
   if (pathname === "/api/public/booking" && req.method === "GET") {
@@ -1553,8 +1719,31 @@ async function handleApi(req, res, url) {
   const shopId = shopIdFor(user, db);
   const actor = user.email;
 
-  if (pathname === "/api/logout" && req.method === "POST") return sendJson(res, 200, { ok: true });
+  if (pathname === "/api/logout" && req.method === "POST") {
+    const token = String(req.headers.authorization || "").startsWith("Bearer ") ? String(req.headers.authorization).slice(7) : "";
+    if (token) {
+      sessions.delete(token);
+      db.sessions = (db.sessions || []).filter((session) => session.token !== token);
+      await writeDb(db);
+    }
+    return sendJson(res, 200, { ok: true });
+  }
   if (pathname === "/api/me" && req.method === "GET") return sendJson(res, 200, { user: publicUser(user), currentBarbershopId: shopId });
+  if (pathname === "/api/auth/change-password" && req.method === "POST") {
+    const body = await readBody(req);
+    const nextPassword = String(body.password || "");
+    if (nextPassword.length < 10) return sendJson(res, 400, { error: "password_min_10" });
+    user.passwordHash = hashPassword(nextPassword);
+    user.mustChangePassword = false;
+    user.forcePasswordChange = false;
+    user.passwordChangedAt = new Date().toISOString();
+    addAudit(db, "auth.password_changed", actor, { forced: Boolean(body.forced) }, shopId);
+    await writeDb(db);
+    return sendJson(res, 200, { ok: true, user: publicUser(user) });
+  }
+  if (user.forcePasswordChange) {
+    return sendJson(res, 428, { error: "password_change_required", user: publicUser(user) });
+  }
   if (pathname === "/api/billing/create-checkout-session" && req.method === "POST") {
     if (isBarber(user)) return sendJson(res, 403, { error: "owner_required" });
     try { const session = await createStripeCheckoutSession({ db, user, shopId, source: "app" }); await writeDb(db); return sendJson(res, 200, { url: session.url, id: session.id }); }
@@ -1704,6 +1893,11 @@ async function handleApi(req, res, url) {
   if (pathname === "/api/integrations/whatsapp/embedded-config" && req.method === "GET") {
     if (!canManageSettings(user)) return sendJson(res, 403, { error: "owner_required" });
     return sendJson(res, 200, embeddedSignupPublicConfig());
+  }
+  if (pathname === "/api/integrations/whatsapp/healthcheck" && req.method === "GET") {
+    if (!canManageSettings(user)) return sendJson(res, 403, { error: "owner_required" });
+    if (isRateLimited(req, "whatsapp-healthcheck", 20)) return sendJson(res, 429, { error: "rate_limited" });
+    return sendJson(res, 200, await whatsappHealthcheck(db, shopId));
   }
   if (pathname === "/api/integrations/whatsapp/embedded-complete" && req.method === "POST") {
     if (!canManageSettings(user)) return sendJson(res, 403, { error: "owner_required" });
