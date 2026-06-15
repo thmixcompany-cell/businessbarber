@@ -3730,6 +3730,27 @@ body:has(.admin-shell) .admin-view.active {
 .marketing-footer { box-sizing:border-box; width:100%; max-width:1200px; margin:0 auto; border-top:1px solid rgba(255,255,255,.07); padding:28px 32px 36px; display:flex; justify-content:space-between; gap:20px; color:#938a80; font-size:13px; }
 .marketing-footer div { display:flex; gap:22px; }
 .marketing-footer a { color:#bdb2a3; text-decoration:none; }
+.checkout-footer,
+.legal-footer { padding-bottom:42px; }
+.parent-company-badge {
+  margin-top: 6px;
+  padding: 13px 14px;
+  border: 1px solid rgba(210, 163, 95, 0.16);
+  border-radius: 8px;
+  color: rgba(248, 243, 235, 0.58);
+  background: rgba(255, 255, 255, 0.045);
+  font-size: 11px;
+  line-height: 1.45;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.parent-company-badge strong {
+  display: block;
+  margin-top: 3px;
+  color: #d7b37e;
+  font-size: 12px;
+  letter-spacing: .1em;
+}
 .login-links { display:flex; justify-content:center; gap:20px; margin-top:20px; font-size:13px; }
 .login-links a { color:#bfb2a1; text-decoration:none; }
 .secure-config-note { background:rgba(231,187,116,.08); border:1px solid rgba(231,187,116,.18); border-radius:12px; color:#c8bcaa; padding:13px 14px; font-size:13px; line-height:1.55; margin:14px 0; }
