@@ -287,6 +287,7 @@ function normalizeDb(raw) {
   db.prospects = Array.isArray(db.prospects) ? db.prospects : [];
   db.stripeEvents = Array.isArray(db.stripeEvents) ? db.stripeEvents : [];
   db.checkoutRequests = Array.isArray(db.checkoutRequests) ? db.checkoutRequests : [];
+  db.marketingEvents = Array.isArray(db.marketingEvents) ? db.marketingEvents : [];
   db.integrationsByShop = db.integrationsByShop || {};
   db.publicBookingByShop = db.publicBookingByShop || {};
   db.onboardingByShop = db.onboardingByShop || {};
@@ -560,6 +561,17 @@ function publicIntegrationsByShop(db) {
 
 function adminState(db) {
   return { ...db, users: db.users.map(publicUser), integrations: undefined, integrationsByShop: publicIntegrationsByShop(db) };
+}
+
+function recordMarketingEvent(db, event, metadata = {}) {
+  db.marketingEvents = Array.isArray(db.marketingEvents) ? db.marketingEvents : [];
+  db.marketingEvents.unshift({
+    id: makeId("mkt"),
+    at: new Date().toISOString(),
+    event: sanitizeText(event, 80),
+    metadata,
+  });
+  db.marketingEvents = db.marketingEvents.slice(0, 1000);
 }
 
 function getPublicShop(db, slug) {
@@ -1362,6 +1374,7 @@ async function createSignupCheckout(req, res) {
   }
   const session = await createStripeCheckoutSession({ db, shopId: shop.id, source: "landing_signup", signup: { barbershopName, ownerName, email, whatsapp, city, team, instagram, notes } });
   shop.billing = { ...(shop.billing || {}), checkoutSessionId: session.id, lastCheckoutAt: now, status: shop.billing?.status || "pending_payment" };
+  recordMarketingEvent(db, "checkout_created", { shopId: shop.id, sessionId: session.id, source: "landing_signup", city, team, plan: "Piloto", value: 197 });
   addAudit(db, "billing.signup_checkout_created", email, { shopId: shop.id, sessionId: session.id }, shop.id);
   await writeDb(db);
   return sendJson(res, 201, { url: session.url, shopId: shop.id, sessionId: session.id });
@@ -1436,6 +1449,7 @@ async function handleStripeWebhook(req, res) {
   const db = await readDb();
   const update = updateShopBillingFromStripe(db, event);
   if (event.type === "checkout.session.completed" && update.shop) {
+    recordMarketingEvent(db, "purchase_confirmed", { shopId: update.shopId, sessionId: event?.data?.object?.id || "", plan: update.shop.plan || "Piloto", value: Number(update.shop.monthlyPrice || 197) });
     const emailResult = await sendOnboardingEmail(update.shop);
     addAudit(
       db,
@@ -1456,6 +1470,26 @@ async function handleApi(req, res, url) {
   const { pathname, searchParams } = url;
   if (pathname === "/api/webhooks/whatsapp") return handleWebhook(req, res, url);
   if (pathname === "/api/stripe/webhook") return handleStripeWebhook(req, res);
+  if (pathname === "/api/marketing-event" && req.method === "POST") {
+    if (isRateLimited(req, "marketing-event", 80)) return sendJson(res, 429, { error: "rate_limited" });
+    const body = await readBody(req);
+    const db = await readDb();
+    recordMarketingEvent(db, sanitizeText(body.event, 80), {
+      page: sanitizeText(body.page, 180),
+      target: sanitizeText(body.target, 180),
+      source: sanitizeText(body.source, 80),
+      medium: sanitizeText(body.medium, 80),
+      campaign: sanitizeText(body.campaign, 120),
+      term: sanitizeText(body.term, 120),
+      content: sanitizeText(body.content, 120),
+      gclid: sanitizeText(body.gclid, 120),
+      fbclid: sanitizeText(body.fbclid, 180),
+      referrer: sanitizeText(body.referrer, 240),
+      sessionId: sanitizeText(body.sessionId, 80),
+    });
+    await writeDb(db);
+    return sendJson(res, 201, { ok: true });
+  }
   if (pathname === "/api/billing/signup-checkout" && req.method === "POST") return createSignupCheckout(req, res);
   if (pathname === "/api/billing/checkout" && req.method === "GET") {
     const db = await readDb();

@@ -17,6 +17,7 @@ form?.addEventListener("submit", async (event) => {
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok || !payload.url) throw new Error(payload.message || payload.error || "checkout_indisponivel");
+    if (window.businessBarberTrack) window.businessBarberTrack("checkout_created_front", { target: "stripe_checkout" });
     window.location.href = payload.url;
   } catch (error) {
     message.textContent = "Não foi possível abrir o checkout agora. Confira os dados ou fale conosco pelo WhatsApp.";

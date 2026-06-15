@@ -25,6 +25,7 @@ try {
   await waitForServer();
   const health = await fetchJson("/api/health");
   if (health.storage !== "json") throw new Error("storage_mode_invalid");
+  await fetchJson("/api/marketing-event", { method: "POST", body: JSON.stringify({ event: "page_view_public", page: "/", source: "smoke" }) }, 201);
   const session = await fetchJson("/api/login", { method: "POST", body: JSON.stringify({ email: "demo@businessbarber.local", password: "demo123" }) });
   const auth = { Authorization: `Bearer ${session.token}` };
   await fetchJson("/api/admin/state", { headers: auth }, 403);

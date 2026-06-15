@@ -109,6 +109,53 @@ function renderAdminInviteActivity() {
     : `<article><span>Nenhum convite de encaixe registrado ainda.</span></article>`;
 }
 
+function renderMarketingFunnel() {
+  const container = document.querySelector("#adminMarketingFunnel");
+  if (!container) return;
+  const since = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const events = (adminState.marketingEvents || []).filter((item) => new Date(item.at || 0).getTime() >= since);
+  const count = (name) => events.filter((item) => item.event === name).length;
+  const pageViews = count("page_view_public");
+  const checkoutIntent = count("checkout_intent");
+  const whatsappClicks = count("whatsapp_click");
+  const signupSubmit = count("signup_submit");
+  const checkoutCreated = count("checkout_created") + count("checkout_created_front");
+  const purchases = count("purchase_confirmed");
+  const rate = (value, base) => (base ? `${Math.round((value / base) * 100)}%` : "0%");
+  const recentSource = events.find((item) => item.metadata?.source || item.metadata?.gclid || item.metadata?.fbclid)?.metadata || {};
+
+  container.innerHTML = `
+    <article>
+      <div><strong>${pageViews}</strong><span>visualizações rastreadas</span></div>
+      <span class="commercial-badge muted">7 dias</span>
+    </article>
+    <article>
+      <div><strong>${checkoutIntent}</strong><span>cliques para cadastro (${rate(checkoutIntent, pageViews)})</span></div>
+      <span class="commercial-badge ${checkoutIntent ? "good" : "warning"}">CTA</span>
+    </article>
+    <article>
+      <div><strong>${whatsappClicks}</strong><span>cliques no WhatsApp (${rate(whatsappClicks, pageViews)})</span></div>
+      <span class="commercial-badge ${whatsappClicks ? "good" : "warning"}">Conversa</span>
+    </article>
+    <article>
+      <div><strong>${signupSubmit}</strong><span>pré-cadastros enviados (${rate(signupSubmit, pageViews)})</span></div>
+      <span class="commercial-badge ${signupSubmit ? "good" : "warning"}">Lead quente</span>
+    </article>
+    <article>
+      <div><strong>${checkoutCreated}</strong><span>checkouts criados (${rate(checkoutCreated, signupSubmit || pageViews)})</span></div>
+      <span class="commercial-badge ${checkoutCreated ? "good" : "warning"}">Stripe</span>
+    </article>
+    <article>
+      <div><strong>${purchases}</strong><span>pagamentos confirmados (${rate(purchases, checkoutCreated || pageViews)})</span></div>
+      <span class="commercial-badge ${purchases ? "good" : "danger"}">Compra</span>
+    </article>
+    <article>
+      <div><strong>${recentSource.source || (recentSource.gclid ? "google" : recentSource.fbclid ? "meta" : "sem origem")}</strong><span>última origem identificada</span></div>
+      <span class="commercial-badge muted">${events.length} eventos</span>
+    </article>
+  `;
+}
+
 function billingLabel(status) {
   const map = { active: "Ativa", trialing: "Em teste", pending_payment: "Pagamento pendente", paid: "Pago", past_due: "Pagamento atrasado", unpaid: "Inadimplente", canceled: "Cancelada", incomplete: "Incompleta", lead: "Lead", onboarding_pending: "Onboarding pendente", in_operation: "Em operação" };
   return map[status] || status || "Sem assinatura";
@@ -461,6 +508,7 @@ function renderAdminAll() {
   renderAdminBilling();
   renderReadiness();
   renderAdminInviteActivity();
+  renderMarketingFunnel();
   renderAdminPipeline();
   renderPilotAdmin();
   renderAdminProposal();

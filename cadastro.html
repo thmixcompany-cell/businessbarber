@@ -7,6 +7,7 @@
     <meta name="description" content="Pré-cadastro do Business Barber antes do pagamento da assinatura." />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
     <script src="assets/google-ads.js"></script>
+    <script src="assets/marketing-events.js"></script>
     <script async src="https://www.googletagmanager.com/gtag/js?id=AW-11311087522"></script>
     <link rel="stylesheet" href="styles.css" />
     <script src="cadastro.js" defer></script>
@@ -41,7 +42,7 @@
           </ul>
         </div>
       </section>
-      <form class="checkout-form panel" id="signupCheckoutForm">
+      <form class="checkout-form panel" id="signupCheckoutForm" data-track-submit="signup_submit">
         <span class="eyebrow">Plano piloto</span>
         <h2>Business Barber — R$ 197/mês</h2>
         <p class="billing-entity-note">A assinatura do Business Barber é processada pela ThM IX Company, empresa responsável pela cobrança e emissão do pagamento.</p>
@@ -57,7 +58,7 @@
         <label class="field">Principal objetivo<textarea name="notes" rows="3" placeholder="Ex: recuperar clientes sumidos, reduzir faltas ou preencher horários vagos"></textarea></label>
         <button class="primary-button full" type="submit">Continuar para pagamento seguro</button>
         <p class="muted" id="signupCheckoutMessage">Você será redirecionado para o checkout seguro da Stripe. Após o pagamento, vamos abrir o onboarding manual da sua barbearia.</p>
-        <a class="secondary-button full" href="https://wa.me/556631992916?text=Ol%C3%A1%2C%20tenho%20uma%20d%C3%BAvida%20sobre%20o%20Business%20Barber%20antes%20de%20assinar." target="_blank" rel="noreferrer">Prefiro tirar uma dúvida no WhatsApp</a>
+        <a class="secondary-button full" href="https://wa.me/556631992916?text=Ol%C3%A1%2C%20tenho%20uma%20d%C3%BAvida%20sobre%20o%20Business%20Barber%20antes%20de%20assinar." target="_blank" rel="noreferrer" data-track-event="whatsapp_click" data-track-target="cadastro_duvida">Prefiro tirar uma dúvida no WhatsApp</a>
       </form>
     </main>
   </body>
