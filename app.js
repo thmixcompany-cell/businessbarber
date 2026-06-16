@@ -4,6 +4,10 @@ const money = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 0,
 });
 
+function esc(str) {
+  return String(str ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
+}
+
 const storageKey = "businessBarberState";
 const authKey = "businessBarberAuth";
 let apiEnabled = false;
@@ -414,6 +418,12 @@ const loginScreen = document.querySelector("#loginScreen");
 const appShell = document.querySelector("#appShell");
 const passwordChangeScreen = document.querySelector("#passwordChangeScreen");
 const passwordChangeForm = document.querySelector("#passwordChangeForm");
+const forgotPasswordScreen = document.querySelector("#forgotPasswordScreen");
+const forgotPasswordForm = document.querySelector("#forgotPasswordForm");
+const resetPasswordScreen = document.querySelector("#resetPasswordScreen");
+const resetPasswordForm = document.querySelector("#resetPasswordForm");
+const mobileMenuToggle = document.querySelector("#mobileMenuToggle");
+const sidebarOverlay = document.querySelector("#sidebarOverlay");
 const toast = document.querySelector("#toast");
 let pendingInvite = null;
 
@@ -429,6 +439,8 @@ function needsPasswordChange(user = {}) {
 
 function showPasswordChange(session = getSession()) {
   if (loginScreen) loginScreen.classList.add("hidden");
+  if (forgotPasswordScreen) forgotPasswordScreen.classList.add("hidden");
+  if (resetPasswordScreen) resetPasswordScreen.classList.add("hidden");
   if (appShell) appShell.hidden = true;
   if (passwordChangeScreen) passwordChangeScreen.classList.remove("hidden");
   if (session?.user) {
@@ -438,6 +450,8 @@ function showPasswordChange(session = getSession()) {
 
 function showAuthenticatedApp() {
   if (passwordChangeScreen) passwordChangeScreen.classList.add("hidden");
+  if (forgotPasswordScreen) forgotPasswordScreen.classList.add("hidden");
+  if (resetPasswordScreen) resetPasswordScreen.classList.add("hidden");
   loginScreen.classList.add("hidden");
   appShell.hidden = false;
 }
@@ -646,12 +660,12 @@ function openInviteModal(index) {
   inviteModalTitle.textContent = `Preencher ${payload.slot.time} com ${payload.slot.barber}`;
   inviteSummary.innerHTML = `
     <article>
-      <strong>${payload.slot.time}</strong>
-      <span>${payload.slot.barber} · ${payload.slot.service}</span>
+      <strong>${esc(payload.slot.time)}</strong>
+      <span>${esc(payload.slot.barber)} · ${esc(payload.slot.service)}</span>
     </article>
     <article>
-      <strong>${payload.client.name}</strong>
-      <span>${payload.client.intent || "Cliente sugerido"} · ${money.format(Number(payload.client.value || 0))}</span>
+      <strong>${esc(payload.client.name)}</strong>
+      <span>${esc(payload.client.intent || "Cliente sugerido")} · ${money.format(Number(payload.client.value || 0))}</span>
     </article>
     <article>
       <strong>${payload.link  ?"WhatsApp pronto" : "Sem telefone"}</strong>
@@ -805,10 +819,10 @@ function renderPriorityBoard() {
         <article class="priority-item ${item.strong  ?"strong" : ""}">
           <span class="priority-number">${index + 1}</span>
           <div>
-            <strong>${item.title}</strong>
-            <p>${item.text}</p>
+            <strong>${esc(item.title)}</strong>
+            <p>${esc(item.text)}</p>
           </div>
-          <button class="${item.primary  ?"primary-button" : "tiny-button"}" ${item.attrs} type="button">${item.button}</button>
+          <button class="${item.primary  ?"primary-button" : "tiny-button"}" ${item.attrs} type="button">${esc(item.button)}</button>
         </article>
       `,
     )
@@ -876,6 +890,41 @@ function renderMetrics() {
   setMetric("#pilotsMetric", `${pilots}/3`);
 }
 
+function populateBarberFilter() {
+  const filter = document.querySelector("#barberFilter");
+  if (!filter) return;
+  const previous = filter.value || "all";
+  const professionals = (state.professionals || []).filter((item) => item.active !== false && item.name);
+  filter.innerHTML = `<option value="all">Todos</option>${professionals.map((item) => `<option value="${esc(item.name)}">${esc(item.name)}</option>`).join("")}`;
+  filter.value = previous === "all" || professionals.some((item) => item.name === previous) ? previous : "all";
+}
+
+function populateAppointmentSelects() {
+  if (!appointmentForm) return;
+  const barberSelect = appointmentForm.elements.barber;
+  const serviceSelect = appointmentForm.elements.service;
+  if (barberSelect?.tagName === "SELECT") {
+    const previous = barberSelect.value;
+    const professionals = (state.professionals || []).filter((item) => item.active !== false && item.name);
+    barberSelect.innerHTML = professionals.map((item) => `<option value="${esc(item.name)}">${esc(item.name)}</option>`).join("") || '<option value="">Cadastre um barbeiro</option>';
+    if (professionals.some((item) => item.name === previous)) barberSelect.value = previous;
+  }
+  if (serviceSelect?.tagName === "SELECT") {
+    const previous = serviceSelect.value;
+    const services = (state.services || []).filter((item) => item.active !== false && item.name);
+    serviceSelect.innerHTML = services.map((item) => `<option value="${esc(item.name)}">${esc(item.name)}</option>`).join("") || '<option value="">Cadastre um serviço</option>';
+    if (services.some((item) => item.name === previous)) serviceSelect.value = previous;
+  }
+}
+
+function ensureSelectOption(select, value) {
+  if (!select || select.tagName !== "SELECT" || !value) return;
+  const exists = Array.from(select.options).some((option) => option.value === value);
+  if (!exists) {
+    select.insertAdjacentHTML("afterbegin", `<option value="${esc(value)}">${esc(value)}</option>`);
+  }
+}
+
 function renderSchedule() {
   if (scheduleDate && !scheduleDate.value) {
     scheduleDate.value = todayIso();
@@ -914,14 +963,14 @@ function renderSchedule() {
 
       return `
         <article class="${className}">
-          <div class="time">${item.time}</div>
+          <div class="time">${esc(item.time)}</div>
           <div class="appointment-body">
             <div class="appointment-header">
               <div class="appointment-main">
-                <strong>${item.client}</strong>
-                <span>${serviceText}</span>
+                <strong>${esc(item.client)}</strong>
+                <span>${esc(serviceText)}</span>
               </div>
-              <span class="${pillClass} appointment-status">${statusText}</span>
+              <span class="${pillClass} appointment-status">${esc(statusText)}</span>
             </div>
             ${action}
           </div>
@@ -976,8 +1025,10 @@ function renderSchedule() {
       appointmentForm.elements.editIndex.value = String(index);
       appointmentForm.elements.date.value = appointmentDate(appointment);
       appointmentForm.elements.time.value = appointment.time || "";
+      ensureSelectOption(appointmentForm.elements.barber, appointment.barber || "");
       appointmentForm.elements.barber.value = appointment.barber || "";
       appointmentForm.elements.client.value = appointment.client || "";
+      ensureSelectOption(appointmentForm.elements.service, appointment.service || "");
       appointmentForm.elements.service.value = appointment.service || "";
       appointmentForm.elements.status.value = appointment.status || "Confirmado";
       document.querySelector("#appointmentSubmit").textContent = "Salvar";
@@ -1046,8 +1097,8 @@ function renderEmployeePanel() {
     employeeNextCard.innerHTML = nextAppointment
       ? `
         <span class="eyebrow">${nextAppointment.time}</span>
-        <strong>${nextAppointment.client}</strong>
-        <p>${nextAppointment.service || "Serviço"} com ${nextAppointment.barber}. Status atual: ${nextAppointment.pixPaid ? "Pix pago" : nextAppointment.status || "Confirmado"}.</p>
+        <strong>${esc(nextAppointment.client)}</strong>
+        <p>${esc(nextAppointment.service || "Serviço")} com ${esc(nextAppointment.barber)}. Status atual: ${esc(nextAppointment.pixPaid ? "Pix pago" : nextAppointment.status || "Confirmado")}.</p>
       `
       : `
         <span class="eyebrow">Agenda em dia</span>
@@ -1073,14 +1124,14 @@ function renderEmployeePanel() {
             `;
           return `
             <article class="${className}">
-              <div class="time">${item.time}</div>
+              <div class="time">${esc(item.time)}</div>
               <div class="appointment-body">
                 <div class="appointment-header">
                   <div class="appointment-main">
-                    <strong>${item.client}</strong>
-                    <span>${item.service || "Serviço não informado"}</span>
+                    <strong>${esc(item.client)}</strong>
+                    <span>${esc(item.service || "Serviço não informado")}</span>
                   </div>
-                  <span class="${pillClass} appointment-status">${statusText}</span>
+                  <span class="${pillClass} appointment-status">${esc(statusText)}</span>
                 </div>
                 ${actions}
               </div>
@@ -1130,10 +1181,10 @@ function renderSuggestions() {
       (item) => `
         <div class="suggestion">
           <div>
-            <strong>${item.title}</strong>
-            <span>${item.subtitle}</span>
+            <strong>${esc(item.title)}</strong>
+            <span>${esc(item.subtitle)}</span>
           </div>
-          <button class="tiny-button" data-suggestion="${item.action}" type="button">${item.button}</button>
+          <button class="tiny-button" data-suggestion="${item.action}" type="button">${esc(item.button)}</button>
         </div>
       `,
     )
@@ -1195,13 +1246,13 @@ function renderInactiveClients() {
             <span class="return-client">
               <input class="return-checkbox" type="checkbox" data-client="${index}" ${client.selected ?"checked" : ""} />
               <span>
-                <strong>${client.name}</strong>
-                <small>${client.favoriteService || "Serviço preferido não informado"}</small>
+                <strong>${esc(client.name)}</strong>
+                <small>${esc(client.favoriteService || "Serviço preferido não informado")}</small>
               </span>
             </span>
             <span class="return-cell">
               <small>Última visita</small>
-              <strong>${client.lastVisit} dias</strong>
+              <strong>${esc(client.lastVisit)} dias</strong>
             </span>
             <span class="return-cell">
               <small>Ticket estimado</small>
@@ -1209,7 +1260,7 @@ function renderInactiveClients() {
             </span>
             <span class="return-cell">
               <small>Chance de retorno</small>
-              <strong>${intentLabel}</strong>
+              <strong>${esc(intentLabel)}</strong>
             </span>
             <span class="${client.selected ?"status-pill good" : "status-pill"}">${client.selected ?"Selecionado" : "Não selecionado"}</span>
           </label>
@@ -1240,9 +1291,9 @@ function renderWaitlist() {
     .map(
       (item) => `
         <article class="wait-card">
-          <strong>${item.period}</strong>
-          <span>${item.people} clientes esperando · melhor chance: ${item.best} (${item.chance})</span>
-          <button class="tiny-button" data-wait-period="${item.period}" type="button">Enviar convites</button>
+          <strong>${esc(item.period)}</strong>
+          <span>${esc(item.people)} clientes esperando · melhor chance: ${esc(item.best)} (${esc(item.chance)})</span>
+          <button class="tiny-button" data-wait-period="${esc(item.period)}" type="button">Enviar convites</button>
         </article>
       `,
     )
@@ -1263,12 +1314,12 @@ function renderCampaignHistory() {
     .map(
       (campaign) => `
         <article>
-          <strong>${campaign.name}</strong>
-          <span>${campaign.status} · ${campaign.sent} enviados · ${campaign.responses} respostas · ${campaign.bookings} agendamentos · ${money.format(Number(campaign.revenue || 0))}</span>
+          <strong>${esc(campaign.name)}</strong>
+          <span>${esc(campaign.status)} · ${Number(campaign.sent || 0)} enviados · ${Number(campaign.responses || 0)} respostas · ${Number(campaign.bookings || 0)} agendamentos · ${money.format(Number(campaign.revenue || 0))}</span>
           <div class="campaign-actions">
-            <button class="tiny-button" data-campaign-action="pause" data-campaign-id="${campaign.id}" type="button">${campaign.status === "Pausada"  ?"Retomar" : "Pausar"}</button>
-            <button class="tiny-button" data-campaign-action="duplicate" data-campaign-id="${campaign.id}" type="button">Duplicar</button>
-            <button class="tiny-button" data-campaign-action="delete" data-campaign-id="${campaign.id}" type="button">Excluir</button>
+            <button class="tiny-button" data-campaign-action="pause" data-campaign-id="${esc(campaign.id)}" type="button">${campaign.status === "Pausada"  ?"Retomar" : "Pausar"}</button>
+            <button class="tiny-button" data-campaign-action="duplicate" data-campaign-id="${esc(campaign.id)}" type="button">Duplicar</button>
+            <button class="tiny-button" data-campaign-action="delete" data-campaign-id="${esc(campaign.id)}" type="button">Excluir</button>
           </div>
         </article>
       `,
@@ -1323,20 +1374,20 @@ function renderMessageOutbox() {
             <article class="message-card">
               <div class="message-card-main">
                 <div>
-                  <strong>${message.client}</strong>
-                  <span>${details || "Mensagem de retorno"}</span>
+                  <strong>${esc(message.client)}</strong>
+                  <span>${esc(details || "Mensagem de retorno")}</span>
                 </div>
-                <span class="status-pill ${statusClass}">${message.status}</span>
+                <span class="status-pill ${statusClass}">${esc(message.status)}</span>
               </div>
               <div class="message-meta">
                 <span>WhatsApp</span>
-                <strong>${message.phone || "sem número cadastrado"}</strong>
+                <strong>${esc(message.phone || "sem número cadastrado")}</strong>
               </div>
               <div class="campaign-actions">
-                ${message.link  ?`<a class="tiny-button as-link" href="${message.link}" target="_blank" rel="noreferrer" data-message-sent="${message.id}">Abrir WhatsApp</a>` : ""}
-                ${message.clientId ? `<button class="tiny-button" data-cloud-send="${message.id}" type="button">Enviar Cloud API</button>` : ""}
-                <button class="tiny-button" data-copy-message="${message.id}" type="button">Copiar texto</button>
-                ${message.type === "slot_invite" && message.status !== "Agendado"  ?`<button class="tiny-button" data-invite-response="${message.id}" type="button">Respondeu</button><button class="tiny-button" data-invite-book="${message.id}" type="button">Agendar</button>` : ""}
+                ${message.link  ?`<a class="tiny-button as-link" href="${esc(message.link)}" target="_blank" rel="noreferrer" data-message-sent="${esc(message.id)}">Abrir WhatsApp</a>` : ""}
+                ${message.clientId ? `<button class="tiny-button" data-cloud-send="${esc(message.id)}" type="button">Enviar Cloud API</button>` : ""}
+                <button class="tiny-button" data-copy-message="${esc(message.id)}" type="button">Copiar texto</button>
+                ${message.type === "slot_invite" && message.status !== "Agendado"  ?`<button class="tiny-button" data-invite-response="${esc(message.id)}" type="button">Respondeu</button><button class="tiny-button" data-invite-book="${esc(message.id)}" type="button">Agendar</button>` : ""}
               </div>
             </article>
           `;
@@ -1458,19 +1509,19 @@ function renderDashboardInviteQueue() {
           const canBook = !isFinal;
           const canMiss = !isFinal;
           const actions = [
-            canMarkResponse  ?`<button class="tiny-button" data-dashboard-invite-response="${message.id}" type="button">Respondeu</button>` : "",
-            canBook  ?`<button class="tiny-button" data-dashboard-invite-book="${message.id}" type="button">Agendar</button>` : "",
-            canMiss  ?`<button class="tiny-button" data-dashboard-invite-miss="${message.id}" type="button">Sem resposta</button>` : "",
+            canMarkResponse  ?`<button class="tiny-button" data-dashboard-invite-response="${esc(message.id)}" type="button">Respondeu</button>` : "",
+            canBook  ?`<button class="tiny-button" data-dashboard-invite-book="${esc(message.id)}" type="button">Agendar</button>` : "",
+            canMiss  ?`<button class="tiny-button" data-dashboard-invite-miss="${esc(message.id)}" type="button">Sem resposta</button>` : "",
           ].join("");
           const statusClass = message.status === "Agendado"  ?"good" : message.status === "Sem resposta"  ?"warning" : message.status === "Cliente respondeu"  ?"info" : "";
           return `
             <article class="invite-card">
               <div class="invite-card-main">
                 <div>
-                  <strong>${message.time || "--:--"} · ${message.client}</strong>
-                  <span>${[message.barber, message.service].filter(Boolean).join(" · ") || "Encaixe sugerido"}</span>
+                  <strong>${esc(message.time || "--:--")} · ${esc(message.client)}</strong>
+                  <span>${esc([message.barber, message.service].filter(Boolean).join(" · ") || "Encaixe sugerido")}</span>
                 </div>
-                <span class="status-pill ${statusClass}">${message.status}</span>
+                <span class="status-pill ${statusClass}">${esc(message.status)}</span>
               </div>
               <div class="invite-card-meta">
                 <span>Ticket estimado</span>
@@ -1502,9 +1553,9 @@ function renderClubPlans() {
     .map(
       (plan) => `
         <article class="club-plan">
-          <strong>${plan.name}</strong>
+          <strong>${esc(plan.name)}</strong>
           <span>${money.format(plan.price)}/mês</span>
-          <p>${plan.perk}</p>
+          <p>${esc(plan.perk)}</p>
           <small>${plan.subscribers} assinantes ativos</small>
           <button class="tiny-button" type="button">Enviar oferta</button>
         </article>
@@ -1568,10 +1619,10 @@ function renderOperationsSetup() {
         (service) => `
           <article class="setup-entity-card">
             <div>
-              <strong>${service.name}</strong>
-              <span>Preço ${money.format(Number(service.price || 0))} · duração ${service.duration} min</span>
+              <strong>${esc(service.name)}</strong>
+              <span>Preço ${money.format(Number(service.price || 0))} · duração ${Number(service.duration || 0)} min</span>
             </div>
-            <button class="tiny-button" data-delete-service="${service.id}" type="button">Remover</button>
+            <button class="tiny-button" data-delete-service="${esc(service.id)}" type="button">Remover</button>
           </article>
         `,
       )
@@ -1584,10 +1635,10 @@ function renderOperationsSetup() {
         (professional) => `
           <article class="setup-entity-card">
             <div>
-              <strong>${professional.name}</strong>
-              <span>${professional.commission}% comissão · ${professional.active  ?"ativo" : "inativo"}</span>
+              <strong>${esc(professional.name)}</strong>
+              <span>${Number(professional.commission || 0)}% comissão · ${professional.active  ?"ativo" : "inativo"}</span>
             </div>
-            <button class="tiny-button" data-delete-professional="${professional.id}" type="button">Remover</button>
+            <button class="tiny-button" data-delete-professional="${esc(professional.id)}" type="button">Remover</button>
           </article>
         `,
       )
@@ -1672,8 +1723,8 @@ function renderIntegrations() {
   integrationStatus.innerHTML = `
     <article class="integration-status-card">
       <strong>WhatsApp</strong>
-      <span>${whatsappStatusLabel}</span>
-      <small>${whatsappMetaState} · número ${whatsappConnection}</small>
+      <span>${esc(whatsappStatusLabel)}</span>
+      <small>${esc(whatsappMetaState)} · número ${esc(whatsappConnection)}</small>
     </article>
     <article class="integration-status-card">
       <strong>Pix</strong>
@@ -1690,8 +1741,8 @@ function renderTenantAndPermissions() {
         (barbershop) => `
           <article>
             <div>
-              <strong>${barbershop.name}</strong>
-              <span>${barbershop.city || "cidade não informada"} · ${barbershop.plan || "Plano"} · ${money.format(Number(barbershop.monthlyPrice || 0))}/mês</span>
+              <strong>${esc(barbershop.name)}</strong>
+              <span>${esc(barbershop.city || "cidade não informada")} · ${esc(barbershop.plan || "Plano")} · ${money.format(Number(barbershop.monthlyPrice || 0))}/mês</span>
             </div>
             <span class="status-pill ${barbershop.active  ?"good" : "warning"}">${barbershop.active  ?"Ativa" : "Pausada"}</span>
           </article>
@@ -1707,8 +1758,8 @@ function renderTenantAndPermissions() {
         (user) => `
           <article>
             <div>
-              <strong>${user.name}</strong>
-              <span>${user.email} · ${roleLabels[user.role] || user.role || "Equipe"}</span>
+              <strong>${esc(user.name)}</strong>
+              <span>${esc(user.email)} · ${esc(roleLabels[user.role] || user.role || "Equipe")}</span>
             </div>
             <span class="status-pill ${user.active !== false  ?"good" : "warning"}">${user.active !== false  ?"Ativo" : "Inativo"}</span>
           </article>
@@ -1750,8 +1801,8 @@ function renderAudit() {
           (log) => `
             <article>
               <div>
-                <strong>${log.action}</strong>
-                <span>${new Date(log.at).toLocaleString("pt-BR")} · ${log.actor || "sistema"}</span>
+                <strong>${esc(log.action)}</strong>
+                <span>${new Date(log.at).toLocaleString("pt-BR")} · ${esc(log.actor || "sistema")}</span>
               </div>
             </article>
           `,
@@ -1822,13 +1873,13 @@ function renderPipeline() {
         <article class="pipeline-card">
           <header>
             <div>
-              <strong>${prospect.barbershop}</strong>
-              <span>${prospect.owner} · ${prospect.team} profissionais</span>
+              <strong>${esc(prospect.barbershop)}</strong>
+              <span>${esc(prospect.owner)} · ${Number(prospect.team || 0)} profissionais</span>
             </div>
-            <span class="status-pill ${statusClass[prospect.status] || ""}">${prospect.status}</span>
+            <span class="status-pill ${statusClass[prospect.status] || ""}">${esc(prospect.status)}</span>
           </header>
-          <p>${prospect.pain}</p>
-          <span>Próximo passo: ${prospect.next}</span>
+          <p>${esc(prospect.pain)}</p>
+          <span>Próximo passo: ${esc(prospect.next)}</span>
           <div class="pipeline-actions">
             <button class="tiny-button" data-pipeline-action="advance" data-prospect="${index}" type="button">Avançar</button>
             <button class="tiny-button" data-pipeline-action="demo" data-prospect="${index}" type="button">Abrir roteiro</button>
@@ -1874,13 +1925,13 @@ function renderClientsAdmin() {
       (client) => `
         <article class="client-admin-card">
           <div>
-            <strong>${client.name}</strong>
-            <span>${client.phone || "sem WhatsApp"} · ${client.favoriteService || "serviço não informado"} · ${client.consentWhatsapp ? "WhatsApp autorizado" : "sem consentimento WhatsApp"}</span>
+            <strong>${esc(client.name)}</strong>
+            <span>${esc(client.phone || "sem WhatsApp")} · ${esc(client.favoriteService || "serviço não informado")} · ${client.consentWhatsapp ? "WhatsApp autorizado" : "sem consentimento WhatsApp"}</span>
           </div>
           <span>${money.format(Number(client.ticket || 0))}</span>
           <div class="campaign-actions">
-            <button class="tiny-button" data-client-history="${client.id}" type="button">Histórico</button>
-            <button class="tiny-button" data-delete-client="${client.id}" type="button">Remover</button>
+            <button class="tiny-button" data-client-history="${esc(client.id)}" type="button">Histórico</button>
+            <button class="tiny-button" data-delete-client="${esc(client.id)}" type="button">Remover</button>
           </div>
         </article>
       `,
@@ -1915,10 +1966,10 @@ function renderClientHistory(clientId) {
   }, 0);
   clientHistoryBox.innerHTML = `
     <span class="eyebrow">Histórico do cliente</span>
-    <strong>${client.name}</strong>
+    <strong>${esc(client.name)}</strong>
     <p>${appointments.length} atendimentos registrados · ${campaigns.length} campanhas recebidas · ${money.format(total)} em valor estimado.</p>
     <div class="report-list">
-      ${appointments.map((item) => `<article><strong>${item.time} · ${item.service}</strong><span>${item.barber} · ${item.status}</span></article>`).join("") || "<article><span>Nenhum atendimento registrado.</span></article>"}
+      ${appointments.map((item) => `<article><strong>${esc(item.time)} · ${esc(item.service)}</strong><span>${esc(item.barber)} · ${esc(item.status)}</span></article>`).join("") || "<article><span>Nenhum atendimento registrado.</span></article>"}
     </div>
   `;
 }
@@ -1991,12 +2042,12 @@ function renderReports() {
     ["Sinais confirmados", money.format(pixRevenue), "Valores registrados no sistema"],
   ];
   reportGrid.innerHTML = cards
-    .map(([title, value, subtitle]) => `<article class="report-card"><span>${title}</span><strong>${value}</strong><span>${subtitle}</span></article>`)
+    .map(([title, value, subtitle]) => `<article class="report-card"><span>${esc(title)}</span><strong>${esc(value)}</strong><span>${esc(subtitle)}</span></article>`)
     .join("");
   campaignReportList.innerHTML = campaigns
     .map((campaign) => {
       const rate = campaign.sent  ?Math.round((Number(campaign.bookings || 0) / Number(campaign.sent || 1)) * 100) : 0;
-      return `<article><strong>${campaign.name}</strong><span>${campaign.status} · ${campaign.responses}/${campaign.sent} respostas · ${campaign.bookings} agendamentos · ${rate}% conversão · ${money.format(Number(campaign.revenue || 0))}</span></article>`;
+      return `<article><strong>${esc(campaign.name)}</strong><span>${esc(campaign.status)} · ${Number(campaign.responses || 0)}/${Number(campaign.sent || 0)} respostas · ${Number(campaign.bookings || 0)} agendamentos · ${rate}% conversão · ${money.format(Number(campaign.revenue || 0))}</span></article>`;
     })
     .join("") || `<article><span>Nenhuma campanha registrada ainda.</span></article>`;
 }
@@ -2061,6 +2112,8 @@ function applyRoleExperience() {
 
 function renderAll() {
   applyRoleExperience();
+  populateBarberFilter();
+  populateAppointmentSelects();
   renderMetrics();
   renderPriorityBoard();
   renderSchedule();
@@ -2090,6 +2143,7 @@ function renderAll() {
 document.querySelectorAll(".nav-item").forEach((button) => {
   button.addEventListener("click", () => {
     showView(button.dataset.view, button);
+    if (window.matchMedia("(max-width: 760px)").matches) setSidebarOpen(false);
   });
 });
 
@@ -2989,7 +3043,85 @@ if (passwordChangeForm) {
   });
 }
 
+document.querySelector("#showForgotPassword")?.addEventListener("click", () => {
+  loginScreen?.classList.add("hidden");
+  forgotPasswordScreen?.classList.remove("hidden");
+});
+
+document.querySelector("#backToLoginFromForgot")?.addEventListener("click", () => {
+  forgotPasswordScreen?.classList.add("hidden");
+  loginScreen?.classList.remove("hidden");
+});
+
+forgotPasswordForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const email = String(new FormData(event.currentTarget).get("email") || "").trim();
+  const message = document.querySelector("#forgotPasswordMessage");
+  const response = await fetch("/api/auth/forgot-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  }).catch(() => null);
+  if (message) message.textContent = response?.ok ? "Se o e-mail estiver cadastrado, enviaremos o link de recuperação em instantes." : "Não foi possível solicitar a recuperação agora.";
+});
+
+resetPasswordForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const formData = new FormData(event.currentTarget);
+  const newPassword = String(formData.get("newPassword") || "");
+  const confirmPassword = String(formData.get("confirmPassword") || "");
+  const message = document.querySelector("#resetPasswordMessage");
+  const token = new URLSearchParams(window.location.search).get("reset_token") || "";
+  if (newPassword.length < 10) {
+    if (message) message.textContent = "Use uma senha com pelo menos 10 caracteres.";
+    return;
+  }
+  if (newPassword !== confirmPassword) {
+    if (message) message.textContent = "As senhas não conferem.";
+    return;
+  }
+  const response = await fetch("/api/auth/reset-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, newPassword }),
+  }).catch(() => null);
+  if (!response?.ok) {
+    if (message) message.textContent = "Link inválido ou expirado. Solicite uma nova recuperação.";
+    return;
+  }
+  localStorage.removeItem(authKey);
+  if (message) message.textContent = "Senha alterada. Volte ao login para acessar o painel.";
+  window.history.replaceState({}, document.title, "/app.html");
+  setTimeout(() => {
+    resetPasswordScreen?.classList.add("hidden");
+    loginScreen?.classList.remove("hidden");
+  }, 1200);
+});
+
+function setSidebarOpen(open) {
+  const sidebar = document.querySelector(".sidebar");
+  sidebar?.classList.toggle("sidebar-open", open);
+  document.body.classList.toggle("sidebar-is-open", open);
+  mobileMenuToggle?.setAttribute("aria-expanded", String(open));
+}
+
+mobileMenuToggle?.addEventListener("click", () => {
+  const sidebar = document.querySelector(".sidebar");
+  setSidebarOpen(!sidebar?.classList.contains("sidebar-open"));
+});
+
+sidebarOverlay?.addEventListener("click", () => setSidebarOpen(false));
+
 async function initApp() {
+  const resetToken = new URLSearchParams(window.location.search).get("reset_token");
+  if (resetToken) {
+    appShell.hidden = true;
+    loginScreen?.classList.add("hidden");
+    forgotPasswordScreen?.classList.add("hidden");
+    passwordChangeScreen?.classList.add("hidden");
+    resetPasswordScreen?.classList.remove("hidden");
+    return;
+  }
   const session = getSession();
   if (!session.token) {
     appShell.hidden = true;

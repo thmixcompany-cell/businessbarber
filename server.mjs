@@ -393,6 +393,7 @@ function normalizeDb(raw) {
   db.checkoutRequests = Array.isArray(db.checkoutRequests) ? db.checkoutRequests : [];
   db.marketingEvents = Array.isArray(db.marketingEvents) ? db.marketingEvents : [];
   db.sessions = Array.isArray(db.sessions) ? db.sessions : [];
+  db.passwordResets = Array.isArray(db.passwordResets) ? db.passwordResets : [];
   db.integrationsByShop = db.integrationsByShop || {};
   db.publicBookingByShop = db.publicBookingByShop || {};
   db.onboardingByShop = db.onboardingByShop || {};
@@ -510,6 +511,7 @@ function appointmentTimeMs(appointment) {
 }
 function normalizePhone(value) { return String(value || "").replace(/\D/g, "").slice(0, 15); }
 function validPhone(value) { const phone = normalizePhone(value); return phone.length >= 10 && phone.length <= 15; }
+function validSignupWhatsapp(value) { const phone = normalizePhone(value); return phone.length >= 10 && phone.length <= 13; }
 function sanitizeText(value, max = 120) { return String(value || "").trim().replace(/[<>]/g, "").slice(0, max); }
 function sanitizeEmail(value) { return String(value || "").trim().toLowerCase().slice(0, 180); }
 function validEmail(value) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim()); }
@@ -1192,6 +1194,64 @@ function emailConfigured() {
   return Boolean(resendApiKey && emailFrom);
 }
 
+function buildPasswordResetEmailHtml(user = {}, resetLink = "") {
+  const name = escapeHtml(user.name || "tudo bem");
+  const link = escapeHtml(resetLink);
+  return `<!doctype html>
+<html lang="pt-BR">
+  <body style="margin:0;background:#090806;color:#f8f2e7;font-family:Arial,Helvetica,sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#090806;padding:28px 12px;">
+      <tr><td align="center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:580px;background:#14110d;border:1px solid rgba(218,171,91,.34);border-radius:16px;overflow:hidden;">
+          <tr><td style="padding:30px;background:linear-gradient(135deg,#17120c,#24190e);">
+            <div style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#d9a95d;font-weight:700;">Business Barber</div>
+            <h1 style="margin:14px 0 10px;font-size:30px;line-height:1.1;color:#fff7e8;">Recuperação de senha</h1>
+            <p style="margin:0;color:#d8cdbc;font-size:16px;line-height:1.6;">Olá, ${name}. Recebemos uma solicitação para redefinir sua senha.</p>
+          </td></tr>
+          <tr><td style="padding:28px 30px;">
+            <p style="margin:0 0 20px;color:#e7dccb;font-size:16px;line-height:1.65;">Clique no botão abaixo para criar uma nova senha. O link expira em 1 hora.</p>
+            <a href="${link}" style="display:inline-block;background:#d9a95d;color:#110d08;text-decoration:none;font-weight:800;border-radius:10px;padding:14px 20px;">Criar nova senha</a>
+            <p style="margin:22px 0 0;color:#b8aa98;font-size:13px;line-height:1.55;">Se você não pediu isso, ignore este e-mail.</p>
+          </td></tr>
+          <tr><td style="padding:18px 30px;border-top:1px solid rgba(255,255,255,.08);color:#b8aa98;font-size:13px;">Business Barber · ThM IX Company</td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </body>
+</html>`;
+}
+
+function buildPasswordResetEmailText(user = {}, resetLink = "") {
+  return [
+    `Olá, ${user.name || "tudo bem"}.`,
+    "",
+    "Recebemos uma solicitação para redefinir sua senha no Business Barber.",
+    `Crie uma nova senha por este link: ${resetLink}`,
+    "",
+    "O link expira em 1 hora. Se você não pediu isso, ignore este e-mail.",
+    "",
+    "Business Barber · ThM IX Company",
+  ].join("\n");
+}
+
+async function sendPasswordResetEmail(user = {}, resetLink = "") {
+  if (!emailConfigured() || !resendClient) return { ok: false, skipped: true, error: "email_not_configured" };
+  try {
+    const response = await resendClient.emails.send({
+      from: emailFrom,
+      to: [user.email],
+      replyTo: emailReplyTo,
+      subject: "Redefina sua senha no Business Barber",
+      html: buildPasswordResetEmailHtml(user, resetLink),
+      text: buildPasswordResetEmailText(user, resetLink),
+    });
+    if (response?.error) throw new Error(response.error.message || "resend_send_failed");
+    return { ok: true, id: response?.data?.id || response?.id || "" };
+  } catch (error) {
+    return { ok: false, error: error.message || "email_send_failed" };
+  }
+}
+
 function onboardingEmailPlan(barbershop = {}) {
   return barbershop.plan ? `Business Barber - Plano ${barbershop.plan}` : "Business Barber - Plano Piloto";
 }
@@ -1497,7 +1557,10 @@ async function createSignupCheckout(req, res) {
   const team = Math.max(1, Number.parseInt(body.team || "1", 10) || 1);
   const instagram = sanitizeText(body.instagram || "", 80);
   const notes = sanitizeText(body.notes || "", 500);
-  if (!barbershopName || !ownerName || !validEmail(email) || !validPhone(whatsapp)) {
+  if (!validSignupWhatsapp(whatsapp)) {
+    return sendJson(res, 400, { error: "whatsapp_invalido", message: "WhatsApp inválido. Informe DDD e número com 10 a 13 dígitos." });
+  }
+  if (!barbershopName || !ownerName || !validEmail(email)) {
     return sendJson(res, 400, { error: "invalid_signup", message: "Informe barbearia, responsável, email válido e WhatsApp com DDD." });
   }
   const db = await readDb();
@@ -1631,6 +1694,20 @@ async function handleStripeWebhook(req, res) {
 
 async function handleApi(req, res, url) {
   const { pathname, searchParams } = url;
+  if (pathname === "/api/health" && req.method === "GET") {
+    return sendJson(res, 200, {
+      status: "ok",
+      uptime: process.uptime(),
+      storage: storageProvider,
+      databaseConnected: true,
+      whatsappConfigured: Boolean(whatsappAccessToken && whatsappPhoneNumberId),
+      stripeConfigured: stripeConfigured(),
+      stripeMode: stripeModeLabel(),
+      stripeProductionReady: stripeProductionReady(),
+      emailConfigured: emailConfigured(),
+      billingEntity: billingEntityName,
+    });
+  }
   if (pathname === "/api/webhooks/whatsapp") return handleWebhook(req, res, url);
   if (pathname === "/api/stripe/webhook") return handleStripeWebhook(req, res);
   if (pathname === "/api/marketing-event" && req.method === "POST") {
@@ -1659,15 +1736,45 @@ async function handleApi(req, res, url) {
     try { const session = await createStripeCheckoutSession({ db, source: "landing" }); await writeDb(db); return sendRedirect(res, session.url); }
     catch (error) { console.error("Stripe checkout public error:", error.message, error.stripe || ""); return sendText(res, error.statusCode || 500, "Stripe checkout indisponível. Confira as variáveis STRIPE_SECRET_KEY e STRIPE_PRICE_ID."); }
   }
-  if (pathname === "/api/health") {
-    try {
-      if (storageProvider === "supabase") await readSupabaseState();
-      return sendJson(res, 200, { ok: true, storage: storageProvider, databaseConnected: true, whatsappConfigured: Boolean(whatsappAccessToken && whatsappPhoneNumberId), stripeConfigured: stripeConfigured(), stripeMode: stripeModeLabel(), stripeProductionReady: stripeProductionReady(), emailConfigured: emailConfigured(), billingEntity: billingEntityName });
-    } catch (error) {
-      console.error("Health check database error:", error.message);
-      return sendJson(res, 503, { ok: false, storage: storageProvider, databaseConnected: false, whatsappConfigured: Boolean(whatsappAccessToken && whatsappPhoneNumberId), stripeConfigured: stripeConfigured(), stripeMode: stripeModeLabel(), stripeProductionReady: stripeProductionReady(), emailConfigured: emailConfigured(), billingEntity: billingEntityName });
+  if (pathname === "/api/auth/forgot-password" && req.method === "POST") {
+    if (isRateLimited(req, "forgot-password", 5)) return sendJson(res, 429, { error: "too_many_attempts" });
+    const body = await readBody(req);
+    const email = sanitizeEmail(body.email);
+    const db = await readDb();
+    const user = (db.users || []).find((item) => String(item.email || "").toLowerCase() === email && item.active !== false);
+    if (user) {
+      const token = randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+      db.passwordResets = [{ token, userId: user.id, expiresAt, usedAt: "", createdAt: new Date().toISOString() }, ...(db.passwordResets || []).filter((item) => item.userId !== user.id && Date.parse(item.expiresAt || "") > Date.now())].slice(0, 200);
+      const resetLink = `${appUrl.replace(/\/$/, "")}/app.html?reset_token=${encodeURIComponent(token)}`;
+      const emailResult = await sendPasswordResetEmail(user, resetLink);
+      addAudit(db, emailResult.ok ? "auth.password_reset_email_sent" : "auth.password_reset_email_failed", email || "unknown", { error: emailResult.error || "", skipped: Boolean(emailResult.skipped) }, user.barbershopId || null);
+      await writeDb(db);
     }
+    return sendJson(res, 200, { ok: true });
   }
+
+  if (pathname === "/api/auth/reset-password" && req.method === "POST") {
+    if (isRateLimited(req, "reset-password", 8)) return sendJson(res, 429, { error: "too_many_attempts" });
+    const body = await readBody(req);
+    const token = sanitizeText(body.token, 120);
+    const newPassword = String(body.newPassword || body.password || "");
+    if (!token || newPassword.length < 10) return sendJson(res, 400, { error: "invalid_reset" });
+    const db = await readDb();
+    const reset = (db.passwordResets || []).find((item) => item.token === token && !item.usedAt);
+    if (!reset || Date.parse(reset.expiresAt || "") <= Date.now()) return sendJson(res, 400, { error: "invalid_or_expired_token" });
+    const user = (db.users || []).find((item) => item.id === reset.userId && item.active !== false);
+    if (!user) return sendJson(res, 400, { error: "invalid_or_expired_token" });
+    user.passwordHash = hashPassword(newPassword);
+    user.mustChangePassword = false;
+    user.forcePasswordChange = false;
+    user.passwordChangedAt = new Date().toISOString();
+    reset.usedAt = new Date().toISOString();
+    addAudit(db, "auth.password_reset_completed", user.email, {}, user.barbershopId || null);
+    await writeDb(db);
+    return sendJson(res, 200, { ok: true });
+  }
+
   if (pathname.startsWith("/api/public/") && isRateLimited(req, "public", 25)) return sendJson(res, 429, { error: "rate_limited" });
   if (pathname === "/api/login" && isRateLimited(req, "login", 10)) return sendJson(res, 429, { error: "too_many_attempts" });
   const db = await readDb();

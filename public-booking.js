@@ -22,7 +22,7 @@ function renderSlots() {
 }
 function renderBooking() {
   const shop = publicState.shop || {};
-  document.title = `${shop.name || "Agendamento online"}`;
+  document.title = `Agendamento | ${shop.name || "Barbearia"}`;
   const headerName = document.querySelector("#publicHeaderName");
   if (headerName) headerName.textContent = shop.name || "Agendamento online";
   document.querySelector("#publicShopName").textContent = shop.name || "Barbearia";

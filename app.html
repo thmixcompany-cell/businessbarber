@@ -23,7 +23,42 @@
           <input id="loginPassword" name="password" type="password" placeholder="Sua senha" autocomplete="current-password" required />
         </label>
         <button class="primary-button full" type="submit">Entrar no painel</button>
-        <div class="login-links"><a href="/">Voltar ao site</a><a href="/privacidade.html">Privacidade</a></div>
+        <div class="login-links"><button class="link-button" id="showForgotPassword" type="button">Esqueci minha senha</button><a href="/">Voltar ao site</a><a href="/privacidade.html">Privacidade</a></div>
+      </form>
+    </section>
+
+    <section class="login-screen hidden" id="forgotPasswordScreen" aria-label="Recuperação de senha">
+      <form class="login-card" id="forgotPasswordForm">
+        <div class="brand-mark"><img src="assets/business-barber-logo.png" alt="Business Barber" /></div>
+        <span class="eyebrow">Recuperar acesso</span>
+        <h1>Esqueci minha senha</h1>
+        <p>Informe o e-mail cadastrado. Se ele existir no Business Barber, enviaremos um link para criar uma nova senha.</p>
+        <label class="field">
+          Email
+          <input id="forgotPasswordEmail" name="email" type="email" placeholder="seuemail@barbearia.com" autocomplete="email" required />
+        </label>
+        <button class="primary-button full" type="submit">Enviar link de recuperação</button>
+        <p class="form-feedback" id="forgotPasswordMessage"></p>
+        <div class="login-links"><button class="link-button" id="backToLoginFromForgot" type="button">Voltar ao login</button></div>
+      </form>
+    </section>
+
+    <section class="login-screen hidden" id="resetPasswordScreen" aria-label="Nova senha">
+      <form class="login-card" id="resetPasswordForm">
+        <div class="brand-mark"><img src="assets/business-barber-logo.png" alt="Business Barber" /></div>
+        <span class="eyebrow">Nova senha</span>
+        <h1>Crie uma nova senha</h1>
+        <p>Defina uma senha com pelo menos 10 caracteres para voltar ao painel.</p>
+        <label class="field">
+          Nova senha
+          <input id="resetNewPassword" name="newPassword" type="password" minlength="10" autocomplete="new-password" placeholder="Mínimo de 10 caracteres" required />
+        </label>
+        <label class="field">
+          Confirmar nova senha
+          <input id="resetConfirmPassword" name="confirmPassword" type="password" minlength="10" autocomplete="new-password" placeholder="Repita a nova senha" required />
+        </label>
+        <button class="primary-button full" type="submit">Salvar nova senha</button>
+        <p class="form-feedback" id="resetPasswordMessage"></p>
       </form>
     </section>
 
@@ -92,6 +127,7 @@
 
       <main class="main">
         <header class="topbar">
+          <button class="mobile-menu-button" id="mobileMenuToggle" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button>
           <div>
             <span class="eyebrow">Painel da barbearia</span>
             <h1>Agenda de hoje</h1>
@@ -182,9 +218,6 @@
                 <input id="scheduleDate" type="date" aria-label="Data da agenda" />
                 <select id="barberFilter" aria-label="Filtrar por profissional">
                   <option value="all">Todos</option>
-                  <option value="Rafa">Rafa</option>
-                  <option value="Diego">Diego</option>
-                  <option value="Caio">Caio</option>
                 </select>
               </div>
             </div>
@@ -234,9 +267,9 @@
               <input id="appointmentEditIndex" name="editIndex" type="hidden" />
               <input name="date" type="date" aria-label="Data do agendamento" required />
               <input name="time" placeholder="Horário" required />
-              <input name="barber" placeholder="Barbeiro" required />
+              <select name="barber" aria-label="Barbeiro" required></select>
               <input name="client" placeholder="Cliente" required />
-              <input name="service" placeholder="Serviço" required />
+              <select name="service" aria-label="Serviço" required></select>
               <select name="status" aria-label="Status do agendamento">
                 <option>Confirmado</option>
                 <option>Sinal Pix</option>
@@ -787,6 +820,8 @@ João Demo,559999900009,2026-04-10,Corte,70,Rafa,Tarde</textarea>
         </section>
       </main>
     </div>
+
+    <button class="sidebar-overlay" id="sidebarOverlay" type="button" aria-label="Fechar menu"></button>
 
     <div class="modal-backdrop hidden" id="inviteModal" aria-hidden="true">
       <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="inviteModalTitle">

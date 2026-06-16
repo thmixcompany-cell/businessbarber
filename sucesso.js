@@ -27,4 +27,7 @@ try {
     const text = `Pagamento confirmado no Business Barber. Quero concluir o onboarding da ${shopName}.${session ? ` Sessão Stripe: ${session}` : ""}`;
     whatsapp.href = `https://wa.me/556631992916?text=${encodeURIComponent(text)}`;
   }
-} catch (error) {}
+} catch (error) {
+} finally {
+  localStorage.removeItem("businessBarberLastSignup");
+}

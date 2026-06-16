@@ -5,6 +5,22 @@ form?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const button = form.querySelector('button[type="submit"]');
   const data = Object.fromEntries(new FormData(form).entries());
+  const whatsappInput = form.querySelector('[name="whatsapp"]');
+  const whatsappDigits = String(data.whatsapp || "").replace(/\D/g, "");
+  let whatsappError = form.querySelector("#signupWhatsappError");
+  if (!whatsappError) {
+    whatsappError = document.createElement("small");
+    whatsappError.id = "signupWhatsappError";
+    whatsappError.className = "field-error";
+    whatsappInput?.insertAdjacentElement("afterend", whatsappError);
+  }
+  whatsappError.textContent = "";
+  if (whatsappDigits.length < 10 || whatsappDigits.length > 13) {
+    whatsappError.textContent = "Informe um WhatsApp válido com DDD, entre 10 e 13 dígitos.";
+    whatsappInput?.focus();
+    return;
+  }
+  data.whatsapp = whatsappDigits;
   localStorage.setItem("businessBarberLastSignup", JSON.stringify(data));
   button.disabled = true;
   button.textContent = "Criando checkout...";
