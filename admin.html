@@ -33,6 +33,7 @@
         <nav class="nav-list">
           <button class="nav-item active" data-admin-view="overview" type="button">Visão geral</button>
           <button class="nav-item" data-admin-view="sales" type="button">Comercial</button>
+          <button class="nav-item" data-admin-view="marketing" type="button">Marketing</button>
           <button class="nav-item" data-admin-view="proposal" type="button">Proposta</button>
           <button class="nav-item" data-admin-view="pilot" type="button">Piloto</button>
           <button class="nav-item" data-admin-view="ops" type="button">Operação</button>
@@ -76,7 +77,7 @@
               </div>
               <div class="admin-checklist" id="adminReadiness"></div>
             </section>
-            <section class="panel">
+            <section class="panel wide-panel">
               <div class="panel-header">
                 <div>
                   <span class="eyebrow">Uso do produto</span>
@@ -85,14 +86,46 @@
               </div>
               <div class="compact-list" id="adminInviteActivity"></div>
             </section>
+          </div>
+        </section>
+
+        <section class="admin-view" id="admin-marketing">
+          <div class="admin-marketing-hero panel">
+            <div>
+              <span class="eyebrow">Marketing e aquisição</span>
+              <h2>Dashboard de tráfego e conversão</h2>
+              <p>Acompanhe campanhas, origem dos acessos e gargalos do funil sem misturar isso com a operação das barbearias.</p>
+            </div>
+            <a class="secondary-button" href="/" target="_blank" rel="noreferrer">Ver landing</a>
+          </div>
+          <div class="admin-metric-grid marketing-metric-grid" id="adminMarketingMetrics"></div>
+          <div class="admin-grid">
             <section class="panel">
               <div class="panel-header">
                 <div>
-                  <span class="eyebrow">Tráfego pago</span>
+                  <span class="eyebrow">Funil pago</span>
                   <h2>Funil dos últimos 7 dias</h2>
                 </div>
               </div>
               <div class="compact-list" id="adminMarketingFunnel"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <span class="eyebrow">Diagnóstico</span>
+                  <h2>Leitura da campanha</h2>
+                </div>
+              </div>
+              <div class="compact-list" id="adminMarketingInsights"></div>
+            </section>
+            <section class="panel wide-panel">
+              <div class="panel-header">
+                <div>
+                  <span class="eyebrow">Próximas ações</span>
+                  <h2>O que ajustar antes de aumentar verba</h2>
+                </div>
+              </div>
+              <div class="admin-action-grid" id="adminMarketingActions"></div>
             </section>
           </div>
         </section>

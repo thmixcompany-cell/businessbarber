@@ -4,6 +4,10 @@ const adminMoney = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 0,
 });
 
+function adminEsc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
+}
+
 const adminAuthKey = "businessBarberAdminAuth";
 const adminLoginScreen = document.querySelector("#adminLoginScreen");
 const adminShell = document.querySelector("#adminShell");
@@ -111,7 +115,9 @@ function renderAdminInviteActivity() {
 
 function renderMarketingFunnel() {
   const container = document.querySelector("#adminMarketingFunnel");
-  if (!container) return;
+  const metricsContainer = document.querySelector("#adminMarketingMetrics");
+  const insightsContainer = document.querySelector("#adminMarketingInsights");
+  const actionsContainer = document.querySelector("#adminMarketingActions");
   const since = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const events = (adminState.marketingEvents || []).filter((item) => new Date(item.at || 0).getTime() >= since);
   const count = (name) => events.filter((item) => item.event === name).length;
@@ -123,39 +129,91 @@ function renderMarketingFunnel() {
   const purchases = count("purchase_confirmed");
   const rate = (value, base) => (base ? `${Math.round((value / base) * 100)}%` : "0%");
   const recentSource = events.find((item) => item.metadata?.source || item.metadata?.gclid || item.metadata?.fbclid)?.metadata || {};
+  const sourceLabel = recentSource.source || (recentSource.gclid ? "Google Ads" : recentSource.fbclid ? "Meta Ads" : "Sem origem");
+  const leadSignal = signupSubmit || checkoutIntent;
+  const purchaseRate = pageViews ? Math.round((purchases / pageViews) * 100) : 0;
 
-  container.innerHTML = `
-    <article>
-      <div><strong>${pageViews}</strong><span>visualizações rastreadas</span></div>
-      <span class="commercial-badge muted">7 dias</span>
-    </article>
-    <article>
-      <div><strong>${checkoutIntent}</strong><span>cliques para cadastro (${rate(checkoutIntent, pageViews)})</span></div>
-      <span class="commercial-badge ${checkoutIntent ? "good" : "warning"}">CTA</span>
-    </article>
-    <article>
-      <div><strong>${whatsappClicks}</strong><span>cliques no WhatsApp (${rate(whatsappClicks, pageViews)})</span></div>
-      <span class="commercial-badge ${whatsappClicks ? "good" : "warning"}">Conversa</span>
-    </article>
-    <article>
-      <div><strong>${signupSubmit}</strong><span>pré-cadastros enviados (${rate(signupSubmit, pageViews)})</span></div>
-      <span class="commercial-badge ${signupSubmit ? "good" : "warning"}">Lead quente</span>
-    </article>
-    <article>
-      <div><strong>${checkoutCreated}</strong><span>checkouts criados (${rate(checkoutCreated, signupSubmit || pageViews)})</span></div>
-      <span class="commercial-badge ${checkoutCreated ? "good" : "warning"}">Stripe</span>
-    </article>
-    <article>
-      <div><strong>${purchases}</strong><span>pagamentos confirmados (${rate(purchases, checkoutCreated || pageViews)})</span></div>
-      <span class="commercial-badge ${purchases ? "good" : "danger"}">Compra</span>
-    </article>
-    <article>
-      <div><strong>${recentSource.source || (recentSource.gclid ? "google" : recentSource.fbclid ? "meta" : "sem origem")}</strong><span>última origem identificada</span></div>
-      <span class="commercial-badge muted">${events.length} eventos</span>
-    </article>
-  `;
+  if (metricsContainer) {
+    const cards = [
+      ["Visualizações", String(pageViews), "Páginas rastreadas nos últimos 7 dias"],
+      ["Cliques no CTA", String(checkoutIntent), `${rate(checkoutIntent, pageViews)} das visualizações`],
+      ["Pré-cadastros", String(signupSubmit), `${rate(signupSubmit, checkoutIntent || pageViews)} após clique`],
+      ["Pagamentos", String(purchases), `${purchaseRate}% da audiência rastreada`],
+    ];
+    metricsContainer.innerHTML = cards
+      .map(([title, value, subtitle]) => `<article class="metric"><span>${adminEsc(title)}</span><strong>${adminEsc(value)}</strong><small>${adminEsc(subtitle)}</small></article>`)
+      .join("");
+  }
+
+  if (container) {
+    container.innerHTML = `
+      <article>
+        <div><strong>${pageViews}</strong><span>visualizações rastreadas</span></div>
+        <span class="commercial-badge muted">7 dias</span>
+      </article>
+      <article>
+        <div><strong>${checkoutIntent}</strong><span>cliques para cadastro (${rate(checkoutIntent, pageViews)})</span></div>
+        <span class="commercial-badge ${checkoutIntent ? "good" : "warning"}">CTA</span>
+      </article>
+      <article>
+        <div><strong>${whatsappClicks}</strong><span>cliques no WhatsApp (${rate(whatsappClicks, pageViews)})</span></div>
+        <span class="commercial-badge ${whatsappClicks ? "good" : "warning"}">Conversa</span>
+      </article>
+      <article>
+        <div><strong>${signupSubmit}</strong><span>pré-cadastros enviados (${rate(signupSubmit, pageViews)})</span></div>
+        <span class="commercial-badge ${signupSubmit ? "good" : "warning"}">Lead quente</span>
+      </article>
+      <article>
+        <div><strong>${checkoutCreated}</strong><span>checkouts criados (${rate(checkoutCreated, signupSubmit || pageViews)})</span></div>
+        <span class="commercial-badge ${checkoutCreated ? "good" : "warning"}">Stripe</span>
+      </article>
+      <article>
+        <div><strong>${purchases}</strong><span>pagamentos confirmados (${rate(purchases, checkoutCreated || pageViews)})</span></div>
+        <span class="commercial-badge ${purchases ? "good" : "danger"}">Compra</span>
+      </article>
+      <article>
+        <div><strong>${adminEsc(sourceLabel)}</strong><span>última origem identificada</span></div>
+        <span class="commercial-badge muted">${events.length} eventos</span>
+      </article>
+    `;
+  }
+
+  if (insightsContainer) {
+    const insights = [
+      ["Volume", events.length ? `${events.length} eventos rastreados` : "Sem eventos recentes", events.length ? "A tag está recebendo sinais da landing." : "Confira Google Tag, pixel e eventos de clique."],
+      ["Qualidade", pageViews ? `${rate(leadSignal, pageViews)} avançam no funil` : "Sem base suficiente", pageViews ? "Compare essa taxa entre Google e Meta antes de escalar verba." : "Aguarde tráfego real antes de concluir."],
+      ["Origem", sourceLabel, "Use UTMs em todos os anúncios para separar campanha, conjunto e criativo."],
+    ];
+    insightsContainer.innerHTML = insights
+      .map(([title, value, text]) => `
+        <article>
+          <div>
+            <strong>${adminEsc(value)}</strong>
+            <span>${adminEsc(text)}</span>
+          </div>
+          <span class="commercial-badge muted">${adminEsc(title)}</span>
+        </article>
+      `)
+      .join("");
+  }
+
+  if (actionsContainer) {
+    const actions = [
+      ["Separar campanha por intenção", "Google para busca ativa; Meta para prova, oferta e remarketing."],
+      ["Medir checkout", "Otimizar para pré-cadastro e compra confirmada, não só clique."],
+      ["Revisar criativos", "Criativos devem falar de agenda vazia, cliente sumido e receita recuperada."],
+      ["Acompanhar diariamente", "Não aumentar verba antes de ver clique, cadastro e checkout no mesmo funil."],
+    ];
+    actionsContainer.innerHTML = actions
+      .map(([title, text]) => `
+        <article class="marketing-action-card">
+          <strong>${adminEsc(title)}</strong>
+          <span>${adminEsc(text)}</span>
+        </article>
+      `)
+      .join("");
+  }
 }
-
 function billingLabel(status) {
   const map = { active: "Ativa", trialing: "Em teste", pending_payment: "Pagamento pendente", paid: "Pago", past_due: "Pagamento atrasado", unpaid: "Inadimplente", canceled: "Cancelada", incomplete: "Incompleta", lead: "Lead", onboarding_pending: "Onboarding pendente", in_operation: "Em operação" };
   return map[status] || status || "Sem assinatura";
