@@ -1,7 +1,8 @@
 const money = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
-  maximumFractionDigits: 0,
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
 });
 
 function esc(str) {
@@ -28,7 +29,7 @@ const defaultState = {
       slug: "barbearia-alpha",
       city: "Cuiaba",
       plan: "Profissional",
-      monthlyPrice: 197,
+      monthlyPrice: 119.9,
       setupPrice: 497,
       openTime: "09:00",
       closeTime: "19:00",
@@ -180,7 +181,7 @@ const defaultState = {
       team: 3,
       pain: "cancelamento em cima da hora",
       status: "Piloto proposto",
-      next: "Fechar R$ 197/mês",
+      next: "Fechar R$ 119,90/mês",
     },
   ],
   inactiveClients: [
@@ -1787,7 +1788,7 @@ function renderBilling() {
   if (message) {
     message.textContent = billing.lastEvent
       ? `Último evento Stripe: ${billing.lastEvent}.`
-      : "Plano Business Barber: R$ 197/mês.";
+      : "Plano Business Barber: R$ 119,90/mês.";
   }
 }
 
@@ -1818,7 +1819,7 @@ function renderPilot() {
     ["Quantificar perda", "Pergunte quantos horários vagos e faltas aconteceram na última semana."],
     ["Mostrar recuperação", "Use o botão Resolver agora para preencher um horário vago."],
     ["Abrir reativação", "Mostre clientes sumidos e selecione os mais quentes."],
-    ["Fechar piloto", "Ofereça R$ 197/mês + implantação assistida com meta de recuperar a mensalidade."],
+    ["Fechar piloto", "Ofereça R$ 119,90/mês + implantação assistida com meta de recuperar a mensalidade."],
   ];
 
   const questions = [
@@ -1826,7 +1827,7 @@ function renderPilot() {
     "Como vocês controlam agenda e confirmação",
     "Quantos clientes faltam ou cancelam por semana",
     "O que vocês fazem quando sobra horário vazio",
-    "Você pagaria R$ 197/mês se recuperasse mais do que issó em atendimentos",
+    "Você pagaria R$ 119,90/mês se recuperasse mais do que isso em atendimentos",
   ];
 
   pilotSteps.innerHTML = steps
@@ -2025,7 +2026,7 @@ function renderReports() {
   const inviteBookingRate = funnelSent ? Math.round((funnelBooked / funnelSent) * 100) : 0;
   const openSlots = appointments.filter((item) => item.open).length;
   const recoveredSlots = appointments.filter((item) => item.recovered).length;
-  const roi = revenue  ?(revenue / 197).toFixed(1) : "0.0";
+  const roi = revenue  ?(revenue / 119.9).toFixed(1) : "0.0";
   const cards = [
     ["Convites enviados", String(funnelSent), "Total de encaixes disparados"],
     ["Respostas recebidas", `${inviteResponseRate}%`, `${funnelResponses}/${funnelSent} clientes responderam`],
@@ -2038,7 +2039,7 @@ function renderReports() {
     ["Taxa de resposta", `${responseRate}%`, `${responses}/${sent} contatos responderam`],
     ["Taxa de agendamento", `${bookingRate}%`, `${bookings}/${sent} contatos agendaram`],
     ["Horários preenchidos", String(recoveredSlots), `${openSlots} horários ainda vagos`],
-    ["ROI sobre mensalidade", `${roi}x`, "Referência: R$ 197/mês"],
+    ["ROI sobre mensalidade", `${roi}x`, "Referência: R$ 119,90/mês"],
     ["Sinais confirmados", money.format(pixRevenue), "Valores registrados no sistema"],
   ];
   reportGrid.innerHTML = cards
@@ -2863,7 +2864,7 @@ if (barbershopForm) {
       name: String(formData.get("name") || "").trim(),
       city: String(formData.get("city") || "").trim(),
       plan: String(formData.get("plan") || "Profissional"),
-      monthlyPrice: Number(formData.get("monthlyPrice") || 197),
+      monthlyPrice: Number(formData.get("monthlyPrice") || 119.9),
       setupPrice: Number(formData.get("setupPrice") || 497),
       active: true,
     };

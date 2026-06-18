@@ -1,7 +1,8 @@
 const adminMoney = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
-  maximumFractionDigits: 0,
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
 });
 
 function adminEsc(value) {
@@ -332,7 +333,7 @@ function renderAdminBarbershops() {
             <div class="shop-card-title-row">
               <div>
                 <strong>${shop.name || "Barbearia sem nome"}</strong>
-                <span>${safeText(shop.city, "Cidade não informada")} · ${safeText(shop.ownerName, "Responsável não informado")} · ${adminMoney.format(Number(shop.monthlyPrice || 197))}/mês</span>
+                <span>${safeText(shop.city, "Cidade não informada")} · ${safeText(shop.ownerName, "Responsável não informado")} · ${adminMoney.format(Number(shop.monthlyPrice || 119.9))}/mês</span>
               </div>
               <span class="status-pill ${billingClass(status)}">${billingLabel(status)}</span>
             </div>
@@ -502,7 +503,7 @@ function renderAdminPipeline() {
     button.addEventListener("click", () => {
       const prospect = adminState.prospects[Number(button.dataset.adminProposal)];
       document.querySelector('[data-admin-view="proposal"]').click();
-      document.querySelector("#adminProposalText").value = `Olá, ${prospect.owner}. Pelo que você comentou sobre ${prospect.pain}, a maior oportunidade está em recuperar clientes e preencher horários vagos. Minha sugestão é um piloto de 30 dias do Business Barber por R$ 197/mês + implantação assistida.`;
+      document.querySelector("#adminProposalText").value = `Olá, ${prospect.owner}. Pelo que você comentou sobre ${prospect.pain}, a maior oportunidade está em recuperar clientes e preencher horários vagos. Minha sugestão é um piloto de 30 dias do Business Barber por R$ 119,90/mês + implantação assistida.`;
     });
   });
 }
@@ -520,7 +521,7 @@ function renderPilotAdmin() {
     "Quantos clientes somem depois do primeiro ou segundo corte",
     "Como vocês chamam clientes quando há cancelamento",
     "Vocês cobrariam sinal Pix para reduzir faltas",
-    "Se recuperasse mais que a mensalidade, você pagaria R$ 197/mês",
+    "Se recuperasse mais que a mensalidade, você pagaria R$ 119,90/mês",
   ];
 
   document.querySelector("#adminPilotSteps").innerHTML = steps

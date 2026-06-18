@@ -384,7 +384,7 @@ function normalizeDb(raw) {
   db.currentBarbershopId = db.currentBarbershopId || "shop-alpha";
   db.barbershops = Array.isArray(db.barbershops) ? db.barbershops : [];
   if (!db.barbershops.length) {
-    db.barbershops.push({ id: db.currentBarbershopId, name: "Barbearia Demonstração", slug: "barbearia-demo", city: "", plan: "Piloto", monthlyPrice: 197, active: true, openTime: "09:00", closeTime: "19:00" });
+    db.barbershops.push({ id: db.currentBarbershopId, name: "Barbearia Demonstração", slug: "barbearia-demo", city: "", plan: "Piloto", monthlyPrice: 119.9, active: true, openTime: "09:00", closeTime: "19:00" });
   }
   db.users = Array.isArray(db.users) ? db.users : [];
   db.auditLogs = Array.isArray(db.auditLogs) ? db.auditLogs : [];
@@ -1280,7 +1280,7 @@ function buildOnboardingEmailHtml(barbershop = {}, account = {}) {
   const temporaryPassword = escapeHtml(account.temporaryPassword || "");
   const loginLink = escapeHtml(appLoginUrl());
   const plan = escapeHtml(onboardingEmailPlan(barbershop));
-  const value = escapeHtml(`${formatMoneyBRL(barbershop.monthlyPrice || 197)}/mês`);
+  const value = escapeHtml(`${formatMoneyBRL(barbershop.monthlyPrice || 119.9)}/mês`);
   const whatsappLink = escapeHtml(buildOnboardingWhatsAppLink(barbershop));
   const steps = [
     "Confirmar os dados da barbearia.",
@@ -1375,7 +1375,7 @@ function buildOnboardingEmailText(barbershop = {}, account = {}) {
     `E-mail: ${barbershop.ownerEmail || "Não informado"}`,
     `WhatsApp: ${barbershop.ownerWhatsapp || "Não informado"}`,
     `Plano: ${onboardingEmailPlan(barbershop)}`,
-    `Valor: ${formatMoneyBRL(barbershop.monthlyPrice || 197)}/mês`,
+    `Valor: ${formatMoneyBRL(barbershop.monthlyPrice || 119.9)}/mês`,
     "",
     "Acesso ao painel:",
     `Link: ${appLoginUrl()}`,
@@ -1579,7 +1579,7 @@ async function createSignupCheckout(req, res) {
       instagram,
       onboardingNotes: notes,
       plan: "Piloto",
-      monthlyPrice: 197,
+      monthlyPrice: 119.9,
       active: false,
       lifecycleStatus: "pending_payment",
       subscriptionStatus: "pending_payment",
@@ -1599,7 +1599,7 @@ async function createSignupCheckout(req, res) {
   }
   const session = await createStripeCheckoutSession({ db, shopId: shop.id, source: "landing_signup", signup: { barbershopName, ownerName, email, whatsapp, city, team, instagram, notes } });
   shop.billing = { ...(shop.billing || {}), checkoutSessionId: session.id, lastCheckoutAt: now, status: shop.billing?.status || "pending_payment" };
-  recordMarketingEvent(db, "checkout_created", { shopId: shop.id, sessionId: session.id, source: "landing_signup", city, team, plan: "Piloto", value: 197 });
+  recordMarketingEvent(db, "checkout_created", { shopId: shop.id, sessionId: session.id, source: "landing_signup", city, team, plan: "Piloto", value: 119.9 });
   addAudit(db, "billing.signup_checkout_created", email, { shopId: shop.id, sessionId: session.id }, shop.id);
   await writeDb(db);
   return sendJson(res, 201, { url: session.url, shopId: shop.id, sessionId: session.id });
@@ -1674,7 +1674,7 @@ async function handleStripeWebhook(req, res) {
   const db = await readDb();
   const update = updateShopBillingFromStripe(db, event);
   if (event.type === "checkout.session.completed" && update.shop) {
-    recordMarketingEvent(db, "purchase_confirmed", { shopId: update.shopId, sessionId: event?.data?.object?.id || "", plan: update.shop.plan || "Piloto", value: Number(update.shop.monthlyPrice || 197) });
+    recordMarketingEvent(db, "purchase_confirmed", { shopId: update.shopId, sessionId: event?.data?.object?.id || "", plan: update.shop.plan || "Piloto", value: Number(update.shop.monthlyPrice || 119.9) });
     const accountResult = ensureOwnerUserAfterPayment(db, update.shop);
     const emailResult = await sendOnboardingEmail(update.shop, accountResult.created ? { email: accountResult.email, temporaryPassword: accountResult.temporaryPassword } : { email: update.shop.ownerEmail || update.shop.billing?.customerEmail || "" });
     addAudit(
@@ -1884,7 +1884,7 @@ async function handleApi(req, res, url) {
   if (pathname === "/api/barbershops" && req.method === "GET") return sendJson(res, 200, isPlatformAdmin(user) ? db.barbershops : db.barbershops.filter((shop) => shop.id === shopId));
   if (pathname === "/api/barbershops" && req.method === "POST") {
     if (!isPlatformAdmin(user)) return sendJson(res, 403, { error: "admin_required" });
-    const body = await readBody(req); const shop = { id: body.id || makeId("shop"), name: sanitizeText(body.name), slug: sanitizeText(body.slug || body.name).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""), city: sanitizeText(body.city), plan: body.plan || "Piloto", monthlyPrice: Number(body.monthlyPrice || 197), active: true, openTime: body.openTime || "09:00", closeTime: body.closeTime || "19:00" };
+    const body = await readBody(req); const shop = { id: body.id || makeId("shop"), name: sanitizeText(body.name), slug: sanitizeText(body.slug || body.name).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""), city: sanitizeText(body.city), plan: body.plan || "Piloto", monthlyPrice: Number(body.monthlyPrice || 119.9), active: true, openTime: body.openTime || "09:00", closeTime: body.closeTime || "19:00" };
     db.barbershops.push(shop); addAudit(db, "barbershop.created", actor, { id: shop.id }, null); await writeDb(db); return sendJson(res, 201, shop);
   }
   if (pathname.startsWith("/api/barbershops/") && req.method === "PUT") {

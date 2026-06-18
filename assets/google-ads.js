@@ -10,7 +10,7 @@ gtag("config", "AW-11311087522");
 window.trackGoogleAdsPurchase = function trackGoogleAdsPurchase(transactionId) {
   gtag("event", "conversion", {
     send_to: "AW-11311087522/rf6rCPmVrr0cEKL_xZEq",
-    value: 197.0,
+    value: 119.9,
     currency: "BRL",
     transaction_id: transactionId || "",
   });
