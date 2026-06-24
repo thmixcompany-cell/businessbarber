@@ -50,6 +50,19 @@ const emailFrom = process.env.EMAIL_FROM || "Business Barber <onboarding@busines
 const emailReplyTo = process.env.EMAIL_REPLY_TO || "thmixcompany@gmail.com";
 const onboardingWhatsapp = normalizePhone(process.env.ONBOARDING_WHATSAPP || "556631992916");
 const resendClient = emailProvider === "resend" && resendApiKey ? new Resend(resendApiKey) : null;
+const htmlCsp = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "img-src 'self' data: https://www.facebook.com https://static.xx.fbcdn.net https://www.google.com https://www.google.com.br https://www.googleadservices.com https://www.googletagmanager.com",
+  "font-src 'self' data:",
+  "style-src 'self'",
+  "script-src 'self' https://connect.facebook.net https://www.googletagmanager.com",
+  "connect-src 'self' https://graph.facebook.com https://www.facebook.com https://web.facebook.com https://www.google.com https://www.google.com.br https://www.googleadservices.com https://www.googletagmanager.com https://googleads.g.doubleclick.net https://www.google-analytics.com https://stats.g.doubleclick.net https://api.stripe.com",
+  "frame-src https://www.facebook.com https://web.facebook.com https://checkout.stripe.com https://js.stripe.com https://hooks.stripe.com",
+  "form-action 'self' https://checkout.stripe.com",
+].join("; ");
 
 const tenantCollections = [
   "clients", "professionals", "services", "campaigns", "inactiveClients", "appointments", "waitlist", "clubPlans", "messageHistory", "pixCharges",
@@ -101,25 +114,32 @@ function publicUser(user) {
   return safeUser;
 }
 
+function shouldUseHsts() {
+  return process.env.NODE_ENV === "production" || /^https:\/\//i.test(appUrl);
+}
+
 function securityHeaders(extra = {}) {
-  return {
+  const headers = {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "strict-origin-when-cross-origin",
-    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-    "Content-Security-Policy": "default-src 'self'; img-src 'self' data: https://www.facebook.com https://static.xx.fbcdn.net https://www.google.com https://www.google.com.br https://www.googleadservices.com https://www.googletagmanager.com; style-src 'self'; script-src 'self' https://connect.facebook.net https://www.googletagmanager.com; connect-src 'self' https://graph.facebook.com https://www.facebook.com https://www.google.com https://www.google.com.br https://www.googleadservices.com https://www.googletagmanager.com https://googleads.g.doubleclick.net; frame-src https://www.facebook.com https://web.facebook.com; form-action 'self'; base-uri 'self'; frame-ancestors 'none'",
-    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "X-DNS-Prefetch-Control": "off",
+    "Content-Security-Policy": htmlCsp,
     ...extra,
   };
+  if (shouldUseHsts()) headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+  return headers;
 }
 
 function sendJson(res, status, payload) {
-  res.writeHead(status, securityHeaders({ "Content-Type": "application/json; charset=utf-8" }));
+  res.writeHead(status, securityHeaders({ "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }));
   res.end(JSON.stringify(payload));
 }
 
 function sendText(res, status, text) {
-  res.writeHead(status, securityHeaders({ "Content-Type": "text/plain; charset=utf-8" }));
+  res.writeHead(status, securityHeaders({ "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" }));
   res.end(text);
 }
 
@@ -144,6 +164,12 @@ async function readRawBody(req) {
 }
 
 async function readBody(req) {
+  const contentType = String(req.headers["content-type"] || "").toLowerCase();
+  if (req.method !== "GET" && contentType && !contentType.includes("application/json")) {
+    const error = new Error("unsupported_media_type");
+    error.statusCode = 415;
+    throw error;
+  }
   const raw = (await readRawBody(req)).toString("utf8");
   if (!raw) return {};
   try { return JSON.parse(raw); } catch { const error = new Error("invalid_json"); error.statusCode = 400; throw error; }
@@ -515,6 +541,10 @@ function validSignupWhatsapp(value) { const phone = normalizePhone(value); retur
 function sanitizeText(value, max = 120) { return String(value || "").trim().replace(/[<>]/g, "").slice(0, max); }
 function sanitizeEmail(value) { return String(value || "").trim().toLowerCase().slice(0, 180); }
 function validEmail(value) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim()); }
+function validNewPassword(value) {
+  const password = String(value || "");
+  return password.length >= 10 && password.length <= 128 && /[A-Za-zÀ-ÿ]/.test(password) && /\d/.test(password);
+}
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
 }
@@ -1151,9 +1181,7 @@ async function handleWebhook(req, res, url) {
     return sendText(res, 403, "Verification failed");
   }
   if (req.method !== "POST") return sendJson(res, 405, { error: "method_not_allowed" });
-  const chunks = [];
-  for await (const chunk of req) chunks.push(chunk);
-  const rawBody = Buffer.concat(chunks).toString("utf8");
+  const rawBody = (await readRawBody(req)).toString("utf8");
   const db = await readDb();
   if (!verifyWhatsAppSignature(req, rawBody, db)) return sendJson(res, 401, { error: "invalid_signature" });
   const body = JSON.parse(rawBody || "{}");
@@ -1759,7 +1787,7 @@ async function handleApi(req, res, url) {
     const body = await readBody(req);
     const token = sanitizeText(body.token, 120);
     const newPassword = String(body.newPassword || body.password || "");
-    if (!token || newPassword.length < 10) return sendJson(res, 400, { error: "invalid_reset" });
+    if (!token || !validNewPassword(newPassword)) return sendJson(res, 400, { error: "password_policy_required" });
     const db = await readDb();
     const reset = (db.passwordResets || []).find((item) => item.token === token && !item.usedAt);
     if (!reset || Date.parse(reset.expiresAt || "") <= Date.now()) return sendJson(res, 400, { error: "invalid_or_expired_token" });
@@ -1839,7 +1867,7 @@ async function handleApi(req, res, url) {
   if (pathname === "/api/auth/change-password" && req.method === "POST") {
     const body = await readBody(req);
     const nextPassword = String(body.password || "");
-    if (nextPassword.length < 10) return sendJson(res, 400, { error: "password_min_10" });
+    if (!validNewPassword(nextPassword)) return sendJson(res, 400, { error: "password_policy_required" });
     user.passwordHash = hashPassword(nextPassword);
     user.mustChangePassword = false;
     user.forcePasswordChange = false;
@@ -1895,7 +1923,7 @@ async function handleApi(req, res, url) {
   if (pathname === "/api/users" && req.method === "GET") return sendJson(res, 200, isPlatformAdmin(user) ? db.users.map(publicUser) : scope(db.users, shopId).map(publicUser));
   if (pathname === "/api/users" && req.method === "POST") {
     if (!canManageTeam(user)) return sendJson(res, 403, { error: "manager_required" });
-    const body = await readBody(req); if (!body.password || String(body.password).length < 10) return sendJson(res, 400, { error: "temporary_password_min_10" });
+    const body = await readBody(req); if (!validNewPassword(body.password)) return sendJson(res, 400, { error: "password_policy_required" });
     const role = isPlatformAdmin(user) ? (body.role || "barber") : (["owner", "manager", "barber"].includes(body.role) ? body.role : "barber");
     const targetShopId = isPlatformAdmin(user) && body.barbershopId ? body.barbershopId : shopId;
     const newUser = { id: body.id || makeId("user"), name: sanitizeText(body.name), email: sanitizeText(body.email, 180).toLowerCase(), role, barbershopId: targetShopId, active: true, passwordHash: hashPassword(body.password), mustChangePassword: true };
@@ -1906,7 +1934,7 @@ async function handleApi(req, res, url) {
     if (!canManageTeam(user)) return sendJson(res, 403, { error: "manager_required" });
     const id = pathname.split("/").pop(); const target = db.users.find((item) => item.id === id); if (!target || (!isPlatformAdmin(user) && target.barbershopId !== shopId)) return sendJson(res, 404, { error: "user_not_found" });
     const body = await readBody(req); const next = { ...target, name: body.name !== undefined ? sanitizeText(body.name) : target.name, role: body.role || target.role, active: body.active !== undefined ? Boolean(body.active) : target.active };
-    if (body.password) { if (String(body.password).length < 10) return sendJson(res, 400, { error: "temporary_password_min_10" }); next.passwordHash = hashPassword(body.password); next.mustChangePassword = true; }
+    if (body.password) { if (!validNewPassword(body.password)) return sendJson(res, 400, { error: "password_policy_required" }); next.passwordHash = hashPassword(body.password); next.mustChangePassword = true; }
     db.users = db.users.map((item) => item.id === id ? next : item); addAudit(db, "user.updated", actor, { id }, target.barbershopId); await writeDb(db); return sendJson(res, 200, publicUser(next));
   }
 
@@ -2128,12 +2156,21 @@ const mimeTypes = { ".html": "text/html; charset=utf-8", ".css": "text/css; char
 async function serveStatic(res, pathname) {
   const requested = pathname === "/" ? "/index.html" : pathname;
   const lower = requested.toLowerCase();
-  const blocked = lower.startsWith("/data/") || lower.startsWith("/.git/") || lower.startsWith("/supabase/") || lower.startsWith("/docs/") || lower.startsWith("/tests/") || lower.startsWith("/scripts/") || /\.(log|err|csv|sql|md|json|example)$/i.test(lower) || lower === "/server.mjs" || lower === "/dockerfile" || lower === "/package.json";
+  const blocked = lower.startsWith("/data/") || lower.startsWith("/.") || lower.startsWith("/node_modules/") || lower.startsWith("/supabase/") || lower.startsWith("/docs/") || lower.startsWith("/tests/") || lower.startsWith("/scripts/") || /\.(log|err|csv|sql|md|json|example|env)$/i.test(lower) || lower === "/server.mjs" || lower === "/dockerfile" || lower === "/package.json" || lower === "/package-lock.json";
   if (blocked) return sendText(res, 404, "Not found");
-  const safePath = path.normalize(decodeURIComponent(requested)).replace(/^[/\\]+/, "");
+  let decoded = "";
+  try { decoded = decodeURIComponent(requested); } catch { return sendText(res, 400, "Bad request"); }
+  const safePath = path.normalize(decoded).replace(/^[/\\]+/, "");
   const filePath = path.resolve(__dirname, safePath);
   if (!filePath.startsWith(__dirname + path.sep) && filePath !== __dirname) return sendText(res, 403, "Forbidden");
-  try { const data = await readFile(filePath); res.writeHead(200, securityHeaders({ "Content-Type": mimeTypes[path.extname(filePath)] || "application/octet-stream" })); res.end(data); } catch { sendText(res, 404, "Not found"); }
+  try {
+    const data = await readFile(filePath);
+    const ext = path.extname(filePath);
+    const isHtml = ext === ".html";
+    const cacheControl = isHtml ? "no-store" : "public, max-age=3600";
+    res.writeHead(200, securityHeaders({ "Content-Type": mimeTypes[ext] || "application/octet-stream", "Cache-Control": cacheControl }));
+    res.end(data);
+  } catch { sendText(res, 404, "Not found"); }
 }
 
 const server = createServer(async (req, res) => {

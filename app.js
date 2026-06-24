@@ -229,6 +229,15 @@ function getSession() {
   }
 }
 
+function isStrongPassword(password) {
+  const value = String(password || "");
+  return value.length >= 10 && value.length <= 128 && /[A-Za-zÀ-ÿ]/.test(value) && /\d/.test(value);
+}
+
+function passwordPolicyMessage() {
+  return "Use uma senha com 10 a 128 caracteres, incluindo letras e números.";
+}
+
 async function apiFetch(url, options = {}, retries = 1) {
   const session = getSession();
   const headers = {
@@ -2906,11 +2915,16 @@ if (userForm) {
       showToast("Informe nome e email do usuário.");
       return;
     }
+    const temporaryPassword = String(formData.get("password") || "");
+    if (!isStrongPassword(temporaryPassword)) {
+      showToast(passwordPolicyMessage());
+      return;
+    }
     if (apiEnabled) {
       const response = await apiFetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...user, password: String(formData.get("password") || "") }),
+        body: JSON.stringify({ ...user, password: temporaryPassword }),
       }).catch(() => null);
       state.users.push(response?.ok  ?await response.json() : user);
     } else {
@@ -3016,8 +3030,8 @@ if (passwordChangeForm) {
     const formData = new FormData(event.currentTarget);
     const password = String(formData.get("password") || "");
     const confirmPassword = String(formData.get("confirmPassword") || "");
-    if (password.length < 10) {
-      showToast("Use uma senha com pelo menos 10 caracteres.");
+    if (!isStrongPassword(password)) {
+      showToast(passwordPolicyMessage());
       return;
     }
     if (password !== confirmPassword) {
@@ -3073,8 +3087,8 @@ resetPasswordForm?.addEventListener("submit", async (event) => {
   const confirmPassword = String(formData.get("confirmPassword") || "");
   const message = document.querySelector("#resetPasswordMessage");
   const token = new URLSearchParams(window.location.search).get("reset_token") || "";
-  if (newPassword.length < 10) {
-    if (message) message.textContent = "Use uma senha com pelo menos 10 caracteres.";
+  if (!isStrongPassword(newPassword)) {
+    if (message) message.textContent = passwordPolicyMessage();
     return;
   }
   if (newPassword !== confirmPassword) {

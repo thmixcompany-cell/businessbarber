@@ -5,7 +5,7 @@ import { setTimeout as delay } from "node:timers/promises";
 const port = 4199;
 const baseUrl = `http://127.0.0.1:${port}`;
 const server = spawn(process.execPath, ["server.mjs"], {
-  env: { ...process.env, PORT: String(port), APP_URL: baseUrl, DEMO_MODE: "true", DEMO_EMAIL: "demo@businessbarber.local", DEMO_PASSWORD: "demo123", ADMIN_EMAIL: "admin@test.com", ADMIN_PASSWORD: "AdminTeste#2026", WHATSAPP_MODE: "sandbox", META_APP_ID: "1234567890", META_APP_SECRET: "meta_secret_teste", META_EMBEDDED_SIGNUP_CONFIG_ID: "config_teste" },
+  env: { ...process.env, PORT: String(port), APP_URL: baseUrl, DEMO_MODE: "true", DEMO_EMAIL: "demo@businessbarber.local", DEMO_PASSWORD: "DemoTeste#2026", ADMIN_EMAIL: "admin@test.com", ADMIN_PASSWORD: "AdminTeste#2026", WHATSAPP_MODE: "sandbox", META_APP_ID: "1234567890", META_APP_SECRET: "meta_secret_teste", META_EMBEDDED_SIGNUP_CONFIG_ID: "config_teste" },
   stdio: "ignore",
 });
 
@@ -26,7 +26,7 @@ try {
   const health = await fetchJson("/api/health");
   if (health.storage !== "json") throw new Error("storage_mode_invalid");
   await fetchJson("/api/marketing-event", { method: "POST", body: JSON.stringify({ event: "page_view_public", page: "/", source: "smoke" }) }, 201);
-  const session = await fetchJson("/api/login", { method: "POST", body: JSON.stringify({ email: "demo@businessbarber.local", password: "demo123" }) });
+  const session = await fetchJson("/api/login", { method: "POST", body: JSON.stringify({ email: "demo@businessbarber.local", password: "DemoTeste#2026" }) });
   const auth = { Authorization: `Bearer ${session.token}` };
   await fetchJson("/api/admin/state", { headers: auth }, 403);
   await fetchJson("/api/barbershops", { method: "POST", headers: auth, body: JSON.stringify({ name: "Não autorizada" }) }, 403);

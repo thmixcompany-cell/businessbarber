@@ -48,10 +48,10 @@
         <div class="brand-mark"><img src="assets/business-barber-logo.png" alt="Business Barber" /></div>
         <span class="eyebrow">Nova senha</span>
         <h1>Crie uma nova senha</h1>
-        <p>Defina uma senha com pelo menos 10 caracteres para voltar ao painel.</p>
+        <p>Defina uma senha com 10 a 128 caracteres, incluindo letras e números.</p>
         <label class="field">
           Nova senha
-          <input id="resetNewPassword" name="newPassword" type="password" minlength="10" autocomplete="new-password" placeholder="Mínimo de 10 caracteres" required />
+          <input id="resetNewPassword" name="newPassword" type="password" minlength="10" maxlength="128" autocomplete="new-password" placeholder="Letras e números" required />
         </label>
         <label class="field">
           Confirmar nova senha
@@ -70,7 +70,7 @@
         <p>Por segurança, defina uma nova senha antes de acessar o painel da barbearia.</p>
         <label class="field">
           Nova senha
-          <input id="newPassword" name="password" type="password" minlength="10" autocomplete="new-password" placeholder="Mínimo de 10 caracteres" required />
+          <input id="newPassword" name="password" type="password" minlength="10" maxlength="128" autocomplete="new-password" placeholder="Letras e números" required />
         </label>
         <label class="field">
           Confirmar nova senha
@@ -718,7 +718,7 @@
                 <form class="compact-form tenant-form" id="userForm">
                   <input name="name" placeholder="Nome" required />
                   <input name="email" placeholder="email@barbearia.com" type="email" required />
-                  <input name="password" placeholder="Senha temporária (10+ caracteres)" minlength="10" type="password" required />
+                  <input name="password" placeholder="Senha temporária com letras e números" minlength="10" maxlength="128" type="password" required />
                   <select name="role">
                     <option value="barber">Barbeiro</option>
                     <option value="manager">Gerente</option>
