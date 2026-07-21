@@ -22,7 +22,7 @@ try {
   const copy = document.querySelector("#successCopy");
   const shopName = signup.barbershopName || signup.barbershop || "sua barbearia";
   if (title && shopName) title.textContent = `Pagamento confirmado. Agora vamos ativar ${shopName}.`;
-  if (copy && shopName) copy.textContent = `Recebemos a assinatura do Business Barber para ${shopName}. O próximo passo é concluir o onboarding manual para configurar serviços, horários, WhatsApp, página pública e primeira campanha.`;
+  if (copy && shopName) copy.textContent = `Recebemos a assinatura do Business Barber para ${shopName}. O próximo passo é concluir o onboarding assistido para configurar serviços, horários, WhatsApp, página pública e primeira campanha.`;
   if (whatsapp) {
     const text = `Pagamento confirmado no Business Barber. Quero concluir o onboarding da ${shopName}.${session ? ` Sessão Stripe: ${session}` : ""}`;
     whatsapp.href = `https://wa.me/556631992916?text=${encodeURIComponent(text)}`;

@@ -844,6 +844,7 @@ function renderPriorityBoard() {
   }
 
   if (nextActionTitle && nextActionText) {
+    const signalGrid = document.querySelector(".signal-grid");
     if (slot) {
       const likelyClient = wait  ?clients.find((client) => client.name === wait.best) || selectedClients[0] : selectedClients[0];
       nextActionTitle.textContent = `${slot.time} com ${slot.barber} está aberto`;
@@ -852,8 +853,9 @@ function renderPriorityBoard() {
         : `${selectedClients.length} clientes com chance de retorno podem receber convite.`;
       document.querySelector("#fillBestSlot").textContent = `Preencher ${slot.time}`;
       if (prioritySignalChance) prioritySignalChance.textContent = wait?.chance || "70%";
-      if (prioritySignalTicket) prioritySignalTicket.textContent = money.format(Number(likelyClient.value || 0) || Number(slot.ticket || 85));
+      if (prioritySignalTicket) prioritySignalTicket.textContent = money.format(Number(likelyClient?.value || 0) || Number(slot.ticket || 0));
       if (prioritySignalTime) prioritySignalTime.textContent = `${Math.max(3, Math.min(12, selectedClients.length * 2 + 2))} min`;
+      signalGrid?.removeAttribute("hidden");
     } else {
       nextActionTitle.textContent = "Nenhum horário aberto no dia selecionado";
       nextActionText.textContent = "Acompanhe confirmações, Pix pendentes e lista de espera para manter a agenda protegida.";
@@ -861,6 +863,7 @@ function renderPriorityBoard() {
       if (prioritySignalChance) prioritySignalChance.textContent = "-";
       if (prioritySignalTicket) prioritySignalTicket.textContent = money.format(0);
       if (prioritySignalTime) prioritySignalTime.textContent = "0 min";
+      signalGrid?.setAttribute("hidden", "");
     }
   }
 }
@@ -889,6 +892,12 @@ function renderMetrics() {
   setMetric("#openSlotsCount", String(dayOpenSlots));
   setMetric("#inactiveCount", String((state.inactiveClients || []).length));
   setMetric("#noshowAvoided", money.format(paidSignalsTotal));
+  const recoveredAppointments = (state.appointments || []).filter((item) => item.recovered).length;
+  const readyWaitlists = (state.waitlist || []).filter((item) => Number(item.people || 0) > 0).length;
+  setMetric("#recoveredRevenueHint", recoveredAppointments ? `${recoveredAppointments} atendimento${recoveredAppointments > 1 ? "s" : ""} recuperado${recoveredAppointments > 1 ? "s" : ""}` : "Nenhuma receita atribuída ainda");
+  setMetric("#openSlotsHint", dayOpenSlots ? (readyWaitlists ? `${readyWaitlists} lista${readyWaitlists === 1 ? "" : "s"} de espera com clientes` : "Nenhum cliente na lista de espera") : "Agenda sem vagas abertas");
+  setMetric("#inactiveHint", (state.inactiveClients || []).length ? "Clientes há 45 dias ou mais sem voltar" : "Importe clientes para identificar retornos");
+  setMetric("#confirmedSignalsHint", paidSignals.length ? `${paidSignals.length} sinal${paidSignals.length > 1 ? "is" : ""} confirmado${paidSignals.length > 1 ? "s" : ""}` : "Nenhum sinal confirmado ainda");
 
   // Estes indicadores existem apenas no painel do fundador.
   // No painel da barbearia, não podem interromper o render das demais telas.
@@ -1041,6 +1050,7 @@ function renderSchedule() {
       ensureSelectOption(appointmentForm.elements.service, appointment.service || "");
       appointmentForm.elements.service.value = appointment.service || "";
       appointmentForm.elements.status.value = appointment.status || "Confirmado";
+      appointmentForm.closest("details")?.setAttribute("open", "");
       document.querySelector("#appointmentSubmit").textContent = "Salvar";
       showToast("Edite o horário no formulário de agenda.");
     });
@@ -1578,23 +1588,25 @@ function renderClubPlans() {
 }
 
 function renderSetup() {
+  if (!setupList) return;
+  const whatsapp = state.integrations?.whatsapp || {};
   const steps = [
-    ["Serviços e duração", "Corte, barba, combo e preços configurados"],
-    ["Equipe", "3 profissionais com agenda individual"],
-    ["WhatsApp", "Mensagens de confirmação e retorno prontas"],
-    ["Clientes importados", "128 clientes carregados para reativação"],
-    ["Primeira campanha", "Segmento de 45+ dias pronto para envio"],
+    ["Serviços e duração", state.services.length > 0, state.services.length ? `${state.services.length} serviço${state.services.length > 1 ? "s" : ""} configurado${state.services.length > 1 ? "s" : ""}` : "Cadastre os serviços oferecidos"],
+    ["Equipe", state.professionals.length > 0, state.professionals.length ? `${state.professionals.length} profissional${state.professionals.length > 1 ? "is" : ""} ativo${state.professionals.length > 1 ? "s" : ""}` : "Cadastre os profissionais da agenda"],
+    ["WhatsApp", Boolean(whatsapp.tokenConfigured && whatsapp.phoneNumberIdConfigured), whatsapp.tokenConfigured && whatsapp.phoneNumberIdConfigured ? "Conexão oficial ativa" : "Conecte o número oficial da barbearia"],
+    ["Clientes", state.clients.length > 0, state.clients.length ? `${state.clients.length} cliente${state.clients.length > 1 ? "s" : ""} na base` : "Cadastre ou importe a base de clientes"],
+    ["Primeira campanha", state.campaigns.length > 0, state.campaigns.length ? `${state.campaigns.length} campanha${state.campaigns.length > 1 ? "s" : ""} registrada${state.campaigns.length > 1 ? "s" : ""}` : "Crie a primeira campanha de retorno"],
   ];
 
   setupList.innerHTML = steps
     .map(
-      ([title, subtitle]) => `
+      ([title, complete, subtitle]) => `
         <div class="setup-item">
           <div>
-            <strong>${title}</strong>
-            <span>${subtitle}</span>
+            <strong>${esc(title)}</strong>
+            <span>${esc(subtitle)}</span>
           </div>
-          <span class="setup-check">?</span>
+          <span class="setup-check ${complete ? "complete" : "pending"}" aria-label="${complete ? "Concluído" : "Pendente"}">${complete ? "✓" : "•"}</span>
         </div>
       `,
     )
@@ -1968,6 +1980,7 @@ function renderClientsAdmin() {
 function renderClientHistory(clientId) {
   const client = state.clients.find((item) => item.id === clientId);
   if (!clientHistoryBox || !client) return;
+  clientHistoryBox.hidden = false;
   const appointments = state.appointments.filter((item) => item.client === client.name);
   const campaigns = (state.campaigns || []).filter((campaign) => (campaign.recipients || []).includes(client.name));
   const total = appointments.reduce((sum, item) => {

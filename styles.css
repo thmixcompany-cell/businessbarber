@@ -5602,3 +5602,412 @@ body:has(.admin-shell) .marketing-action-card span {
     align-items: flex-start;
   }
 }
+
+/* ===== UX review 2026-07: clarity, progressive disclosure and real empty states ===== */
+body:has(.app-shell) .panel,
+body:has(.admin-shell) .panel,
+body:has(.app-shell) .metric,
+body:has(.admin-shell) .metric,
+body:has(.app-shell) button,
+body:has(.admin-shell) button,
+.marketing-body .primary-button,
+.marketing-body .secondary-button,
+.marketing-body .hero-dashboard,
+.marketing-body .preview-grid article,
+.marketing-body .benefit-grid article,
+.marketing-body .proof-grid article,
+.marketing-body .roi-card,
+.marketing-body .roi-card div,
+.marketing-body .pilot-card,
+.marketing-body .faq-list details {
+  border-radius: 8px;
+}
+
+body:has(.app-shell) .action-panel {
+  align-self: start;
+}
+
+body:has(.app-shell) #settings,
+body:has(.app-shell) #reports {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+body:has(.app-shell) #settings > .panel,
+body:has(.app-shell) #reports > .panel {
+  min-width: 0;
+}
+
+.action-disclosure,
+.settings-disclosure,
+.import-disclosure {
+  margin-top: 16px;
+  border: 1px solid rgba(232, 214, 184, .13);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .025);
+}
+
+.action-disclosure > summary,
+.settings-disclosure > summary,
+.import-disclosure > summary {
+  cursor: pointer;
+  padding: 15px 16px;
+  color: #fff8ee;
+  font-weight: 750;
+  list-style: none;
+}
+
+.action-disclosure > summary::-webkit-details-marker,
+.settings-disclosure > summary::-webkit-details-marker,
+.import-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.action-disclosure > summary::after,
+.settings-disclosure > summary::after,
+.import-disclosure > summary::after {
+  content: "+";
+  float: right;
+  color: #d7ad6b;
+}
+
+.action-disclosure[open] > summary::after,
+.settings-disclosure[open] > summary::after,
+.import-disclosure[open] > summary::after {
+  content: "−";
+}
+
+.action-disclosure[open] > summary,
+.settings-disclosure[open] > summary,
+.import-disclosure[open] > summary {
+  border-bottom: 1px solid rgba(232, 214, 184, .1);
+}
+
+.action-disclosure .appointment-form,
+.settings-disclosure > .setup-list,
+.settings-disclosure > .onboarding-box,
+.settings-disclosure > .management-grid,
+.settings-disclosure > .role-matrix,
+.import-disclosure > p,
+.import-disclosure > textarea,
+.import-disclosure > button {
+  margin: 16px;
+}
+
+.settings-disclosure > .setup-list,
+.settings-disclosure > .management-grid,
+.settings-disclosure > .role-matrix {
+  width: auto;
+}
+
+.settings-disclosure > .onboarding-box {
+  width: auto;
+  margin-top: 0;
+}
+
+.integration-disclosure .integration-form {
+  padding: 16px;
+}
+
+.compact-disclosure {
+  margin-top: 12px;
+}
+
+body:has(.app-shell) #settings .setup-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+body:has(.app-shell) #settings .setup-item {
+  min-height: 82px;
+}
+
+body:has(.app-shell) #settings .setup-check.pending {
+  color: #d9b573;
+  background: rgba(217, 181, 115, .12);
+}
+
+body:has(.app-shell) #settings .setup-check.complete {
+  color: #9ed9c2;
+  background: rgba(82, 163, 132, .15);
+}
+
+body:has(.app-shell) #settings .management-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+body:has(.app-shell) #settings .role-matrix {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+body:has(.app-shell) #reports .report-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+body:has(.app-shell) .client-history-box[hidden],
+body:has(.app-shell) .signal-grid[hidden],
+.advanced-config[hidden] {
+  display: none !important;
+}
+
+body:has(.app-shell) .import-disclosure textarea {
+  width: calc(100% - 32px);
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+body:has(.admin-shell) .admin-topbar h1 {
+  max-width: 760px;
+  font-size: clamp(28px, 3vw, 42px);
+  line-height: 1.12;
+  letter-spacing: 0;
+}
+
+.marketing-main {
+  padding-top: 34px;
+}
+
+.release-hero {
+  min-height: 560px;
+}
+
+.hero-copy h1 {
+  max-width: 680px;
+  margin: 16px 0 18px;
+  font-size: clamp(42px, 4.6vw, 56px);
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+.hero-copy p {
+  font-size: 16px;
+  line-height: 1.62;
+}
+
+.hero-actions {
+  margin-top: 26px;
+}
+
+.hero-actions .primary-button,
+.hero-actions .secondary-button {
+  min-height: 50px;
+  padding: 14px 20px;
+}
+
+.trust-row {
+  margin-top: 24px;
+  gap: 9px;
+}
+
+.preview-label {
+  display: inline-flex;
+  margin: 0 0 12px 6px;
+  color: #d7ad6b;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.marketing-body .benefit-section,
+.marketing-body .results-section,
+.marketing-body .proof-section,
+.marketing-body .roi-section,
+.marketing-body .pilot-section,
+.marketing-body .faq-section {
+  padding-top: 60px;
+  padding-bottom: 60px;
+}
+
+.marketing-body .section-heading h2,
+.marketing-body .results-section h2,
+.marketing-body .proof-section h2,
+.marketing-body .roi-section h2,
+.marketing-body .pilot-section h2,
+.marketing-body .faq-section h2 {
+  font-size: clamp(30px, 3.2vw, 38px);
+  letter-spacing: 0;
+}
+
+.proof-section > div > p {
+  max-width: 520px;
+  color: #afa497;
+  line-height: 1.65;
+}
+
+.public-hero-premium,
+.public-explainer,
+.public-services-showcase,
+.public-booking-form,
+.public-summary,
+.public-policy {
+  border-radius: 8px;
+}
+
+.public-hero {
+  min-height: 250px;
+}
+
+.public-hero h1 {
+  font-size: clamp(38px, 6vw, 66px);
+  letter-spacing: 0;
+}
+
+@media (max-width: 900px) {
+  .marketing-main {
+    padding-top: 12px;
+  }
+
+  .release-hero {
+    min-height: 0;
+  }
+
+  .hero-copy h1 {
+    font-size: 36px;
+    line-height: 1.12;
+  }
+
+  .hero-actions {
+    margin-top: 22px;
+  }
+
+  .hero-dashboard,
+  .pilot-card,
+  .roi-card {
+    margin-top: 26px;
+  }
+
+  .conversion-strip article,
+  .benefit-grid article,
+  .proof-grid article {
+    min-height: 0;
+    padding: 18px;
+  }
+
+  .marketing-body .benefit-section,
+  .marketing-body .results-section,
+  .marketing-body .proof-section,
+  .marketing-body .roi-section,
+  .marketing-body .pilot-section,
+  .marketing-body .faq-section {
+    padding-top: 44px;
+    padding-bottom: 44px;
+  }
+
+  .public-page {
+    padding: 12px;
+  }
+
+  .public-explainer {
+    margin-bottom: 12px;
+    padding: 13px 14px;
+  }
+
+  .public-hero-premium {
+    padding: 20px;
+  }
+
+  .public-hero {
+    min-height: 0;
+  }
+
+  .public-hero h1 {
+    margin: 8px 0;
+    font-size: 34px;
+  }
+
+  .public-meta {
+    margin-top: 14px;
+  }
+
+  .public-booking-shell {
+    margin-top: 12px;
+  }
+
+  .public-booking-form,
+  .public-summary,
+  .public-services-showcase {
+    padding: 18px;
+  }
+}
+
+@media (max-width: 760px) {
+  body:has(.app-shell) #settings .setup-list,
+  body:has(.app-shell) #settings .management-grid,
+  body:has(.app-shell) #settings .role-matrix,
+  body:has(.app-shell) #reports .report-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .action-disclosure .appointment-form {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-action-note {
+    display: none;
+  }
+
+  .trust-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .trust-row span {
+    padding: 7px 9px;
+    font-size: 11px;
+  }
+
+  .hero-dashboard {
+    padding: 18px;
+  }
+
+  .preview-head {
+    padding-bottom: 20px;
+  }
+
+  .preview-head strong {
+    font-size: 38px;
+  }
+
+  .preview-grid article {
+    min-height: 78px;
+    padding: 12px;
+  }
+
+  .preview-grid strong {
+    margin-top: 8px;
+    font-size: 22px;
+  }
+
+  .proof-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .proof-grid article {
+    padding: 15px;
+  }
+
+  .proof-grid strong {
+    font-size: 15px;
+  }
+
+  .proof-grid span {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+}
+
+body:has(.app-shell) .workspace-grid.active {
+  animation: view-enter .2s ease-out both;
+}
+
+.honeypot {
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body:has(.app-shell) .workspace-grid.active {
+    animation: none;
+  }
+}

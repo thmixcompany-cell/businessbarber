@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Business Barber | Painel da Barbearia</title>
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=ux-20260721c" />
   </head>
   <body>
     <section class="login-screen" id="loginScreen" aria-label="Login">
@@ -114,14 +114,6 @@
           <button class="nav-item" data-view="settings" type="button">Ajustes</button>
         </nav>
 
-        <div class="sidebar-card">
-          <span class="eyebrow">Meta do mês</span>
-          <strong>R$ 9.000</strong>
-          <div class="progress-track" aria-label="Progresso da meta mensal">
-            <div class="progress-fill"></div>
-          </div>
-          <small>72% alcançado</small>
-        </div>
         <footer class="app-sidebar-footer">Business Barber · ThM IX Company</footer>
       </aside>
 
@@ -153,23 +145,23 @@
         <section class="metric-grid" aria-label="Indicadores principais">
           <article class="metric">
             <span>Receita recuperada</span>
-            <strong id="recoveredRevenue">R$ 2.430</strong>
-            <small>+18 atendimentos no mês</small>
+            <strong id="recoveredRevenue">R$ 0,00</strong>
+            <small id="recoveredRevenueHint">Nenhuma receita atribuída ainda</small>
           </article>
           <article class="metric">
             <span>Horários vagos hoje</span>
-            <strong id="openSlotsCount">4</strong>
-            <small>2 com lista de espera pronta</small>
+            <strong id="openSlotsCount">0</strong>
+            <small id="openSlotsHint">Agenda sem vagas abertas</small>
           </article>
           <article class="metric">
             <span>Clientes sem retorno</span>
-            <strong id="inactiveCount">37</strong>
-            <small>sem voltar há 45+ dias</small>
+            <strong id="inactiveCount">0</strong>
+            <small id="inactiveHint">Importe clientes para identificar retornos</small>
           </article>
           <article class="metric">
             <span>Sinais confirmados</span>
-            <strong id="noshowAvoided">R$ 680</strong>
-            <small>somente valores confirmados</small>
+            <strong id="noshowAvoided">R$ 0,00</strong>
+            <small id="confirmedSignalsHint">Somente valores confirmados</small>
           </article>
         </section>
 
@@ -263,21 +255,24 @@
             </div>
 
             <div class="mini-list" id="smartSuggestions"></div>
-            <form class="compact-form appointment-form" id="appointmentForm">
-              <input id="appointmentEditIndex" name="editIndex" type="hidden" />
-              <input name="date" type="date" aria-label="Data do agendamento" required />
-              <input name="time" placeholder="Horário" required />
-              <select name="barber" aria-label="Barbeiro" required></select>
-              <input name="client" placeholder="Cliente" required />
-              <select name="service" aria-label="Serviço" required></select>
-              <select name="status" aria-label="Status do agendamento">
-                <option>Confirmado</option>
-                <option>Sinal Pix</option>
-                <option>Recuperado</option>
-                <option>Aberto</option>
-              </select>
-              <button class="tiny-button" id="appointmentSubmit" type="submit">Agendar</button>
-            </form>
+            <details class="action-disclosure">
+              <summary>Adicionar atendimento manualmente</summary>
+              <form class="compact-form appointment-form" id="appointmentForm">
+                <input id="appointmentEditIndex" name="editIndex" type="hidden" />
+                <input name="date" type="date" aria-label="Data do agendamento" required />
+                <input name="time" placeholder="Horário" required />
+                <select name="barber" aria-label="Barbeiro" required></select>
+                <input name="client" placeholder="Cliente" required />
+                <select name="service" aria-label="Serviço" required></select>
+                <select name="status" aria-label="Status do agendamento">
+                  <option>Confirmado</option>
+                  <option>Sinal Pix</option>
+                  <option>Recuperado</option>
+                  <option>Aberto</option>
+                </select>
+                <button class="tiny-button" id="appointmentSubmit" type="submit">Agendar</button>
+              </form>
+            </details>
           </div>
         </section>
 
@@ -514,14 +509,19 @@
                 <h2>Implantação guiada</h2>
               </div>
             </div>
-            <div class="setup-list" id="setupList"></div>
-            <div class="onboarding-box">
-              <span class="eyebrow">Primeira campanha</span>
-              <strong>Onboarding assistido</strong>
-              <div class="onboarding-list" id="onboardingList"></div>
-            </div>
-            <div class="management-grid">
-              <section>
+            <details class="settings-disclosure">
+              <summary>Progresso da implantação</summary>
+              <div class="setup-list" id="setupList"></div>
+              <div class="onboarding-box">
+                <span class="eyebrow">Primeira campanha</span>
+                <strong>Onboarding assistido</strong>
+                <div class="onboarding-list" id="onboardingList"></div>
+              </div>
+            </details>
+            <details class="settings-disclosure">
+              <summary>Serviços e profissionais</summary>
+              <div class="management-grid">
+                <section>
                 <div class="mini-section-header">
                   <strong>Serviços</strong>
                   <span>Preço e duração</span>
@@ -533,8 +533,8 @@
                   <input name="duration" min="5" type="number" placeholder="Min" required />
                   <button class="tiny-button" type="submit">Adicionar</button>
                 </form>
-              </section>
-              <section>
+                </section>
+                <section>
                 <div class="mini-section-header">
                   <strong>Profissionais</strong>
                   <span>Equipe ativa</span>
@@ -545,22 +545,17 @@
                   <input name="commission" min="0" max="100" type="number" placeholder="%" required />
                   <button class="tiny-button" type="submit">Adicionar</button>
                 </form>
-              </section>
-            </div>
-            <div class="role-matrix">
-              <article>
-                <strong>Dono</strong>
-                <span>Acessa financeiro, configurações, equipe e relatórios.</span>
-              </article>
-              <article>
-                <strong>Gerente</strong>
-                <span>Agenda, clientes, campanhas e relatórios operacionais.</span>
-              </article>
-              <article>
-                <strong>Barbeiro</strong>
-                <span>Visualiza agenda própria e confirma atendimentos.</span>
-              </article>
-            </div>
+                </section>
+              </div>
+            </details>
+            <details class="settings-disclosure">
+              <summary>Perfis de acesso</summary>
+              <div class="role-matrix">
+                <article><strong>Dono</strong><span>Acessa financeiro, configurações, equipe e relatórios.</span></article>
+                <article><strong>Gerente</strong><span>Agenda, clientes, campanhas e relatórios operacionais.</span></article>
+                <article><strong>Barbeiro</strong><span>Visualiza a própria agenda e confirma atendimentos.</span></article>
+              </div>
+            </details>
           </div>
 
           <div class="panel">
@@ -575,7 +570,9 @@
                 <button class="secondary-button" id="testPix" type="button">Testar Pix</button>
               </div>
             </div>
-            <form class="integration-form" id="integrationForm">
+            <details class="settings-disclosure integration-disclosure">
+              <summary>Configurar Pix e página pública</summary>
+              <form class="integration-form" id="integrationForm">
               <div class="management-grid">
                 <section>
                   <div class="mini-section-header">
@@ -583,7 +580,7 @@
                     <span>Conexão oficial da barbearia</span>
                   </div>
                   <p class="secure-config-note">Use “Conectar com Meta” para vincular o WhatsApp oficial. As credenciais técnicas ficam protegidas e não precisam fazer parte da rotina da barbearia.</p>
-                  <details class="advanced-config">
+                  <details class="advanced-config" hidden>
                     <summary>Configuração avançada</summary>
                     <label class="field">
                       Provedor
@@ -684,8 +681,9 @@
                   <input id="publicBookingSlug" name="publicBookingSlug" placeholder="barbearia-alpha" />
                 </label>
               </div>
-              <button class="primary-button full" type="submit">Salvar integrações</button>
-            </form>
+                <button class="primary-button full" type="submit">Salvar integrações</button>
+              </form>
+            </details>
             <div class="compact-list integration-status" id="integrationStatus"></div>
             <div class="booking-link-box">
               <span class="eyebrow">Página pública</span>
@@ -715,17 +713,20 @@
                   <span>Dono, gerente e barbeiro</span>
                 </div>
                 <div class="compact-list" id="userList"></div>
-                <form class="compact-form tenant-form" id="userForm">
-                  <input name="name" placeholder="Nome" required />
-                  <input name="email" placeholder="email@barbearia.com" type="email" required />
-                  <input name="password" placeholder="Senha temporária com letras e números" minlength="10" maxlength="128" type="password" required />
-                  <select name="role">
-                    <option value="barber">Barbeiro</option>
-                    <option value="manager">Gerente</option>
-                    <option value="owner">Dono</option>
-                  </select>
-                  <button class="tiny-button" type="submit">Convidar</button>
-                </form>
+                <details class="settings-disclosure compact-disclosure">
+                  <summary>Convidar pessoa</summary>
+                  <form class="compact-form tenant-form" id="userForm">
+                    <input name="name" placeholder="Nome" required />
+                    <input name="email" placeholder="email@barbearia.com" type="email" required />
+                    <input name="password" placeholder="Senha temporária com letras e números" minlength="10" maxlength="128" type="password" required />
+                    <select name="role">
+                      <option value="barber">Barbeiro</option>
+                      <option value="manager">Gerente</option>
+                      <option value="owner">Dono</option>
+                    </select>
+                    <button class="tiny-button" type="submit">Convidar</button>
+                  </form>
+                </details>
               </section>
             </div>
           </div>
@@ -781,14 +782,13 @@
               <button class="primary-button full" type="submit">Salvar cliente</button>
             </form>
 
-            <div class="import-box">
-              <span class="eyebrow">Importar CSV</span>
-              <p>Cabeçalho aceito: nome, whatsapp, última_visita, serviço, ticket, profissional, período. Após importar, registre consentimento antes de campanhas via WhatsApp.</p>
-              <textarea id="clientCsv" rows="7">nome,whatsapp,última_visita,serviço,ticket,profissional,período
-João Demo,559999900009,2026-04-10,Corte,70,Rafa,Tarde</textarea>
+            <details class="import-box import-disclosure">
+              <summary>Importar lista de clientes por CSV</summary>
+              <p>Cabeçalho aceito: nome, whatsapp, última_visita, serviço, ticket, profissional, período. Registre o consentimento antes de campanhas via WhatsApp.</p>
+              <textarea id="clientCsv" rows="7" placeholder="nome,whatsapp,última_visita,serviço,ticket,profissional,período"></textarea>
               <button class="secondary-button full" id="importClients" type="button">Importar clientes</button>
-            </div>
-            <div class="client-history-box" id="clientHistoryBox">
+            </details>
+            <div class="client-history-box" id="clientHistoryBox" hidden>
               <span class="eyebrow">Histórico do cliente</span>
               <strong>Selecione um cliente</strong>
               <p>Use o botão Histórico na lista para ver atendimentos, campanhas e valor recuperado.</p>
@@ -846,6 +846,6 @@ João Demo,559999900009,2026-04-10,Corte,70,Rafa,Tarde</textarea>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=ux-20260721"></script>
   </body>
 </html>

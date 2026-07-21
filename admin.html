@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Business Barber | Admin</title>
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=ux-20260721c" />
   </head>
   <body>
     <section class="login-screen" id="adminLoginScreen" aria-label="Login administrativo">
@@ -32,11 +32,11 @@
         </div>
         <nav class="nav-list">
           <button class="nav-item active" data-admin-view="overview" type="button">Visão geral</button>
-          <button class="nav-item" data-admin-view="sales" type="button">Comercial</button>
+          <button class="nav-item" data-admin-view="sales" type="button">Leads</button>
           <button class="nav-item" data-admin-view="marketing" type="button">Marketing</button>
           <button class="nav-item" data-admin-view="proposal" type="button">Proposta</button>
-          <button class="nav-item" data-admin-view="pilot" type="button">Piloto</button>
-          <button class="nav-item" data-admin-view="ops" type="button">Operação</button>
+          <button class="nav-item" data-admin-view="pilot" type="button">Demonstração</button>
+          <button class="nav-item" data-admin-view="ops" type="button">Clientes SaaS</button>
         </nav>
         <a class="admin-return" href="/app.html">Abrir painel da barbearia</a>
         <footer class="admin-sidebar-footer">Business Barber · ThM IX Company</footer>
@@ -47,7 +47,7 @@
           <div>
             <span class="eyebrow">Painel do fundador</span>
             <h1>Controle comercial e operacional do Business Barber</h1>
-            <p>Use esta área para vender, acompanhar pilotos, simular propostas, monitorar clientes SaaS e preparar a operação.</p>
+            <p>Use esta área para acompanhar leads, propostas, aquisição, clientes SaaS e a saúde da operação.</p>
           </div>
           <div class="topbar-actions">
             <a class="secondary-button" href="/">Ver site</a>
@@ -281,7 +281,7 @@
                 <label><input type="checkbox" checked disabled /> WhatsApp Cloud API testado com templates aprovados</label>
                 <label><input type="checkbox" checked disabled /> Stripe Checkout e Webhook configurados</label>
                 <label><input type="checkbox" checked disabled /> Pré-cadastro antes do pagamento ativo</label>
-                <label><input type="checkbox" disabled /> Onboarding manual concluído com o cliente pagante</label>
+                <label><input type="checkbox" disabled /> Onboarding assistido concluído com o cliente pagante</label>
               </div>
               <div class="manual-onboarding-mini">
                 <strong>Roteiro pós-venda</strong>
@@ -295,6 +295,6 @@
     </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="admin.js"></script>
+    <script src="admin.js?v=ux-20260721"></script>
   </body>
 </html>
